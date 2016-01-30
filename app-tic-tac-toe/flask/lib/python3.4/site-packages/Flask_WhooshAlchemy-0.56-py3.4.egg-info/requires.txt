@@ -1,0 +1,4 @@
+Flask-SQLAlchemy
+SQLAlchemy
+Whoosh
+blinker

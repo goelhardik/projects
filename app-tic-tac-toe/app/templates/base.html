@@ -1,0 +1,205 @@
+<html>
+  <link rel="stylesheet" type="text/css" href="../static/css/mystyle.css">
+  <script src="/static/js/jquery-1.11.3.js"></script>
+  <head>
+	<title>Welcome to Tic Tac Toe</title>
+  </head>
+  <body class="main-board" background="../static/img/background.jpg">
+  	<h1 class="heading" align="center">Play tic-tac-toe against the computer!</h1>
+	{% block content %}{% endblock %}
+	<div id="board" class="outer" style="position:absolute; left:0; top:0; right:0; 
+		bottom:0; margin: auto;">
+
+	<a id="00" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="01" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="02" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="10" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="11" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="12" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="20" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="21" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	<a id="22" data-player="-" href="#!" class="inner" onclick="addcross(this);"></a>
+	</div>
+	<div class="status" id="loading">Go.</div>
+	<a href="#!" class="restart" id="restart" onclick="restart_game();">Restart</a>
+
+  <script type="text/javascript">
+
+	function make_game_state() {
+		var i;
+		var j;
+	        var x;
+		var state = "";
+		for (i = 0; i < 3; i++) {
+			for (j = 0; j < 3; j++) {
+				x = document.getElementById(String(String(i) + 
+						String(j)));
+				state = String(String(state) + 
+					String(x.getAttribute("data-player")));
+			}
+		}
+		return state;
+	}
+
+	function reset_game_state() {
+		var i;
+		var j;
+	        var x;
+		for (i = 0; i < 3; i++) {
+			for (j = 0; j < 3; j++) {
+				x = document.getElementById(String(String(i) + 
+						String(j)));
+				x.dataset.player = "-";
+			}
+		}
+	}
+
+	function reenable_boxes() {
+		var i;
+		var j;
+	        var x;
+		for (i = 0; i < 3; i++) {
+			for (j = 0; j < 3; j++) {
+				x = document.getElementById(String(String(i) + 
+						String(j)));
+				x.style.backgroundImage = null;
+				x.className = "inner";
+				x.onclick = function() {addcross(this)};
+			}
+		}
+	}
+
+	function restart_game() {
+		reset_game_state();
+		$.ajax({
+	  		url: '/restart_game',
+			type: 'GET',
+			async: false,
+			success: function(data) {
+			}
+		});
+		var status_ele = document.getElementById("loading");
+		status_ele.innerHTML = "Go.";
+		status_ele.style.width = "50px";
+		var restart = document.getElementById("restart");
+		restart.style.boxShadow = "None";
+		reenable_boxes();
+	}
+
+	function disable_all() {
+		var x;
+		var i;
+		var j;
+		for (i = 0; i < 3; i++) {
+			for (j = 0; j < 3; j++) {
+				x = document.getElementById(String(i) + 
+						String(j));
+				if (x.getAttribute("class") != "winner") {
+			    		x.className = "disabled";
+			    		x.onclick = null;
+				}
+			}
+		}
+	}
+
+	function check_if_over() {
+		var state = make_game_state();
+		$.ajax({
+	  		url: '/check_if_over',
+			type: 'GET',
+			async: false,
+			data: {gamestate : state},
+			success: function(data) {
+			var result = data.result;
+			if (result === "-1") {
+				return result;
+			} else {
+				var status_ele = document.getElementById("loading");
+				status_ele.style.width = "150px";
+				var restart = document.getElementById("restart");
+				restart.style.boxShadow = "0px 5px 5px 1px #333";
+				if (result === "1") {
+					$.ajax({
+	  					url: '/get_winning_blocks',
+						type: 'GET',
+						async: false,
+						data: {gamestate : state},
+						success: function(data) {
+						var ob = JSON.parse(data);
+						for (var i = 0; i < ob.length; 
+							i++) {
+							x = 
+							document.getElementById(ob[i]);
+							x.className = "winner";
+							x.onclick = null;
+							}
+						}
+					});
+					status_ele.innerHTML = "You&nbsp;lose.";
+				} else {
+					status_ele.innerHTML = "It's&nbspa&nbspdraw.";
+				}
+				disable_all();
+				return result;
+			}
+			}
+		});
+	}
+
+	function getresult(ele) {
+		var state = make_game_state();
+		var status_ele = document.getElementById("loading");
+		status_ele.innerHTML = "";
+		status_ele.style.background = "no-repeat center center";
+		//status_ele.style.backgroundImage = 
+		//	"url('../static/img/loader.gif')";
+		status_ele.style.backgroundSize = "450% 450%";
+		$.ajax({
+	  		url: '/game_play',
+			type: 'GET',
+			async: false,
+			data: {gamestate : state},
+			success: function(data) {
+			var over = check_if_over();
+			if (over != "0") {
+			result = data.result;
+			result_ele = document.getElementById(result);
+			result_ele.style.backgroundImage =					
+			   "url('../static/img/nought.gif')";
+			result_ele.dataset.player = "O";
+			result_ele.className = "disabled";
+			result_ele.onclick = null;
+			}
+			}
+		});
+		status_ele.style.backgroundImage = "None";
+		status_ele.style.background = "None";
+		status_ele.innerHTML = "Go.";
+
+	}
+
+
+	  function addcross(ele) { 
+		ele.dataset.player = "X";
+		ele.style.backgroundImage = "url('../static/img/cross.gif')";
+		ele.className = "disabled";
+		ele.onclick = null;
+		getresult(ele);
+		check_if_over();
+	}
+	  
+  </script>
+
+	<hr>
+	{% with messages = get_flashed_messages() %}
+	  {% if messages %}
+	  <ul>
+	  {% for message in messages %}
+	    <li>{{ message }} </li>
+	  {% endfor %}
+	  </ul>
+	{% endif %}
+	{% endwith %}
+  </body>
+</html>
+<!--var result = '{ computer_turn() }}';-->

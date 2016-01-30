@@ -1,0 +1,14 @@
+LICENSE.txt
+MANIFEST.in
+README.rst
+flask_whooshalchemy.py
+requirements.txt
+setup.cfg
+setup.py
+Flask_WhooshAlchemy.egg-info/PKG-INFO
+Flask_WhooshAlchemy.egg-info/SOURCES.txt
+Flask_WhooshAlchemy.egg-info/dependency_links.txt
+Flask_WhooshAlchemy.egg-info/not-zip-safe
+Flask_WhooshAlchemy.egg-info/requires.txt
+Flask_WhooshAlchemy.egg-info/top_level.txt
+test/test_all.py

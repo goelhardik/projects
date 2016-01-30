@@ -1,0 +1,182 @@
+.outer {
+position: absolute;
+width: 316px;
+height: 316px;
+background-color: #FF0000;
+background-color: rgb(255,47,47);
+border-radius: 5px;
+}
+
+.main-board {
+	/* Gradient */
+	background: -webkit-linear-gradient(left, #B0B0B0, #E0E0E0); /* For Safari 5.1 to 6.0 */
+	background: -o-linear-gradient(right, #B0B0B0, #E0E0E0); /* For Opera 11.1 to 12.0 */
+	background: -moz-linear-gradient(right, #B0B0B0, #E0E0E0); /* For Firefox 3.6 to 15 */
+	background: linear-gradient(to right, #B0B0B0, #E0E0E0); /* Standard syntax (must be last) */
+}
+
+.heading {
+	font-family: "Comic Sans MS", cursive, sans-serif;
+	font-weight: normal;
+	color: #404040;
+}
+
+.restart
+{ 
+	color: #383838;
+	text-decoration: none;
+	font-family: "Comic Sans MS", cursive, sans-serif;
+	font-weight: normal;
+	font-size: 20px;
+	border-radius: 15px;
+	box-shadow:0px 5px 5px 1px #333;
+	box-shadow: None;
+	position: absolute;
+	top: 530px;
+	left: 600px;
+	text-align: center;
+	vertical-align: middle;
+	line-height: 40px;
+	display: block;
+	height: 40px;
+	width: 120px; 
+	-webkit-transition: all 0.1s ease; /* Chrome and Safari */
+	-moz-transition: all 0.1s ease; /* Firefox */
+	-ms-transition: all 0.1s ease; /* IE 9 */
+	-o-transition: all 0.1s ease; /* Opera */
+	transition: all 0.1s ease;
+	/* Gradient */
+	background: -webkit-linear-gradient(#B0B0B0, #E0E0E0); /* For Safari 5.1 to 6.0 */
+	background: -o-linear-gradient(#B0B0B0, #E0E0E0); /* For Opera 11.1 to 12.0 */
+	background: -moz-linear-gradient(#B0B0B0, #E0E0E0); /* For Firefox 3.6 to 15 */
+	background: linear-gradient(#B0B0B0, #E0E0E0); /* Standard syntax (must be last) */
+}
+
+.restart:hover {
+	/* Scale */
+	-webkit-transform:scale(1.05); /* Chrome and Safari */
+	-moz-transform:scale(1.05); /* Firefox */
+	-ms-transform:scale(1.05); /* IE 9 */
+	-o-transform:scale(1.05); /* Opera */
+	transform:scale(1.05);
+	/* Glow */
+	-webkit-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-moz-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-ms-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-o-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+}
+
+.result 
+{ 
+	display: none; 
+	float: right;
+	position: absolute;
+	right: 300px;
+	top: 250px;
+}
+
+.outer_disabled {
+position: absolute;
+width: 316px;
+height: 316px;
+background-color: #FF0000;
+border-radius: 5px;
+opacity: 0.8;
+}
+
+.inner {
+	float: left;
+	border-radius: 5px;
+	width: 100px;
+	height: 100px;
+	margin-left: 2.5px;
+	margin-right: 2.5px;
+	margin-top: 2.5px;
+	margin-bottom: 2.5px;
+	background-color: #C00000 ;
+	background: -webkit-linear-gradient(#C00000, #F00000); /* For Safari 5.1 to 6.0 */
+	background: -o-linear-gradient(#C00000, #F00000); /* For Opera 11.1 to 12.0 */
+	background: -moz-linear-gradient(#C00000, #F00000); /* For Firefox 3.6 to 15 */
+	background: linear-gradient(#C00000, #F00000); /* Standard syntax (must be last) */
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size:100% 100%;
+	-webkit-transition: all 0.5s ease; /* Chrome and Safari */
+	-moz-transition: all 0.5s ease; /* Firefox */
+	-ms-transition: all 0.5s ease; /* IE 9 */
+	-o-transition: all 0.5s ease; /* Opera */
+	transition: all 0.5s ease;
+}
+
+.disabled {
+	float: left;
+	border-radius: 5px;
+	width: 100px;
+	height: 100px;
+	margin-left: 2.5px;
+	margin-right: 2.5px;
+	margin-top: 2.5px;
+	margin-bottom: 2.5px;
+	background-color: #C00000 ;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size:100% 100%;
+}
+
+.winner {
+	float: left;
+	border-color: #9ecaed;
+	box-shadow:0px 12px 22px 1px #333;
+	border-radius: 5px;
+	width: 100px;
+	height: 100px;
+	margin-left: 2.5px;
+	margin-right: 2.5px;
+	margin-top: 2.5px;
+	margin-bottom: 2.5px;
+	background-color: #FF9900;
+	background-repeat: no-repeat;
+	background-position: center;
+	background-size:100% 100%;
+	-webkit-transform:scale(1.05); /* Chrome and Safari */
+	-moz-transform:scale(1.05); /* Firefox */
+	-ms-transform:scale(1.05); /* IE 9 */
+	-o-transform:scale(1.05); /* Opera */
+	transform:scale(1.05);
+	/* Glow */
+	-webkit-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-moz-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-ms-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+	-o-box-shadow: 0px 0px 20px rgba(255, 255, 255, 0.8);
+}
+
+.inner:hover {
+	background-image: url(../img/cross.gif);
+	-webkit-transform:scale(1.05); /* Chrome and Safari */
+	-moz-transform:scale(1.05); /* Firefox */
+	-ms-transform:scale(1.05); /* IE 9 */
+	-o-transform:scale(1.05); /* Opera */
+	transform:scale(1.05);
+}
+
+.status
+{
+	background: center;
+	background-color: None;
+	background-size:450% 450%;
+	height: 50px;
+	width: 50px;
+	margin-left: -25px 0 0 -25px;
+	text-align: center;
+	vertical-align: middle;
+	line-height: 50px;
+	top: 8%;
+	left: 0%;
+	position: relative;
+	margin: auto;
+	font-family: "Comic Sans MS", cursive, sans-serif;
+	font-weight: normal;
+	font-size: 20px;
+	color: #383838;
+}
+
