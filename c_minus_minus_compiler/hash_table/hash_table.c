@@ -28,9 +28,8 @@ void print_msg(const char *funcname, const char *msg)
  */
 unsigned long hash_table_hash(char *str)
 {
-	unsigned const char *key;
+	unsigned const char *key = NULL;
 	unsigned long h;
-	int c;
 
 	key = (unsigned const char *) str; 
 	h = 0;
@@ -48,28 +47,36 @@ hash_table_t *hash_table_init(int initial_capacity, float load_factor)
 	hash_table_t *table = NULL;
 
 	// allocate memory for hash table
-	table = (hash_table_t *)malloc(sizeof (hash_table_t));
+	table = (hash_table_t *) malloc(sizeof (hash_table_t));
 	if (table == NULL) {
 		print_msg(FUNCNAME, "Memory allocation failed for table");
 		return NULL;
 	}
+	memset(table, 0, sizeof (hash_table_t));
 	table->capacity = initial_capacity;
 	table->size = 0;
 	table->load_factor = load_factor;
 	DEBUG_PRINT(("Initializing hash table with capacity = %d, load_factor = %f\n", initial_capacity, load_factor));
 	// allocate memory for entries in hash table
-	table->entries = (hash_table_entry_t **)malloc(table->capacity * sizeof (hash_table_entry_t *));
+	table->entries = NULL;
+	table->entries = (hash_table_entry_t **) malloc(table->capacity * sizeof (hash_table_entry_t *));
 	if (table->entries == NULL) {
 		print_msg(FUNCNAME, "Memory allocation failed for table entries");
+		hash_table_cleanup(table);
 		return NULL;
 	}
+	memset(table->entries, 0, sizeof (hash_table_entry_t *));
 	// initialize head for all buckets 
+	
 	for (i = 0; i < table->capacity; i++) {
-		table->entries[i] = (hash_table_entry_t *)malloc(sizeof (hash_table_entry_t)); 
+		table->entries[i] = NULL;
+		table->entries[i] = (hash_table_entry_t *) malloc(sizeof (hash_table_entry_t)); 
 		if (table->entries[i] == NULL) {
 			print_msg(FUNCNAME, "Memory allocation failed for table entry");
+			hash_table_cleanup(table);
 			return NULL;
 		}
+		memset(table->entries[i], 0, sizeof (hash_table_entry_t));
 		table->entries[i]->next == NULL;
 	}
 
@@ -79,18 +86,22 @@ hash_table_t *hash_table_init(int initial_capacity, float load_factor)
 
 hash_table_entry_t *hash_table_create_entry(char *key)
 {
-	hash_table_entry_t *entry;
+	hash_table_entry_t *entry = NULL;
 
-	entry = (hash_table_entry_t *)malloc(sizeof (hash_table_entry_t));
+	entry = (hash_table_entry_t *) malloc(sizeof (hash_table_entry_t));
 	if (entry == NULL) {
 		print_msg(FUNCNAME, "Memory allocation failed for table entry");
 		return NULL;
 	}
-	entry->key = (char *)malloc(sizeof (key));
+	memset(entry, 0, sizeof (hash_table_entry_t));
+	entry->key = (char *) malloc(strlen(key) + 1);
 	if (entry->key == NULL) {
 		print_msg(FUNCNAME, "Memory allocation failed for key");
+		free(entry);
+		entry = NULL;
 		return NULL;
 	}
+	memset(entry->key, 0, sizeof (char) + 1);
 	strcpy(entry->key, key);
 	entry->count = 1;
 	entry->next = NULL;
@@ -102,7 +113,7 @@ int hash_table_insert(hash_table_t *table, char *key)
 {
 	int new_size;
 	unsigned long h;
-	hash_table_entry_t *entry, *p;
+	hash_table_entry_t *entry = NULL, *p = NULL;
 
 	if (table == NULL) {
 		print_msg(FUNCNAME, "NULL table passed");
@@ -141,7 +152,7 @@ int hash_table_insert(hash_table_t *table, char *key)
 hash_table_entry_t *hash_table_lookup(hash_table_t *table, char *key)
 {
 	unsigned long h;
-	hash_table_entry_t *p;
+	hash_table_entry_t *p = NULL;
 
 	if (table == NULL) {
 		print_msg(FUNCNAME, "NULL table passed");
@@ -164,8 +175,10 @@ hash_table_entry_t *hash_table_lookup(hash_table_t *table, char *key)
 int free_entries(hash_table_t *table)
 {
 	int i;
-	hash_table_entry_t *head, *p, *tmp;
+	hash_table_entry_t *head = NULL, *p = NULL, *tmp = NULL;
 
+	if (table->entries == NULL)
+		return 0;
 	/*
 	 * For each bucket, iterate and free its linked list.
 	 */
@@ -174,30 +187,36 @@ int free_entries(hash_table_t *table)
 		p = head;
 		while (p != NULL) {
 			tmp = p->next;
+			free(p->key);
+			p->key = NULL;
 			free(p);
+			p = NULL;
 			p = tmp;
 		}
 	}
-	if (table->entries)
+	if (table->entries) {
 		free(table->entries);
+		table->entries = NULL;
+	}
+
 	return 0;
 }
 
 int hash_table_cleanup(hash_table_t *table)
 {
 	if (table == NULL) {
-
-		return -1;
+		return 0;
 	}
 	free_entries(table);
 	free(table);
+	table = NULL;
 	return 0;
 }
 
 void hash_table_print(hash_table_t *table)
 {
 	int i;
-	hash_table_entry_t *p;
+	hash_table_entry_t *p = NULL;
 
 	/*
 	 * For each bucket, iterate and print its linked list.
@@ -205,7 +224,7 @@ void hash_table_print(hash_table_t *table)
 	for (i = 0; i < table->capacity; i++) {
 		p = table->entries[i]->next;
 		while (p != NULL) {
-			printf("Key : %s Count : %d\n", p->key, p->count);
+			printf("%s %d\n", p->key, p->count);
 			p = p->next;
 		}
 	}
@@ -216,7 +235,7 @@ void hash_table_print(hash_table_t *table)
  */
 int main()
 {
-	hash_table_t *table;
+	hash_table_t *table = NULL;
 
 	table = hash_table_init(INITIAL_SIZE, 1);
 	hash_table_insert(table, "hardik");
