@@ -122,6 +122,7 @@ int hash_table_insert(hash_table_t *table, char *key)
 	// lookup if this key is already in the table
 	p = hash_table_lookup(table, key);
 	if (p) {
+		DEBUG_PRINT(("Incrementing count for key = %s\n", key));
 		p->count++;
 		return 0;
 	}
@@ -137,15 +138,38 @@ int hash_table_insert(hash_table_t *table, char *key)
 	if (entry == NULL) {
 		return -1; // error message already printed while creating entry
 	}
+	DEBUG_PRINT(("Inserting key = %s\n", key));
 	// get the bucket from hash function
 	h = hash_table_hash(entry->key);
-	// start with the head of this bucket
+	// insert this entry at the head of the linked list
 	p = table->entries[h];
-	while (p->next != NULL) {
+	entry->next = p->next;
+	p->next = entry;
+	return 0;
+}
+
+int hash_table_delete(hash_table_t *table, char *key)
+{
+	unsigned long h;
+	hash_table_entry_t *p = NULL, *pp = NULL;
+
+	DEBUG_PRINT(("Deleting key = %s\n", key));
+	// get the bucket from hash function
+	h = hash_table_hash(key);
+	p = table->entries[h]->next;
+	pp = table->entries[h];
+	while (p && (strcmp(p->key, key) != 0)) {
+		pp = p;
 		p = p->next;
 	}
-	// reached the end of this bucket's linked list
-	p->next = entry;
+	if (p == NULL) {
+		DEBUG_PRINT(("Key = %s not found\n", key));
+		return -1;
+	}
+	pp->next = p->next;
+	free(p->key);
+	free(p);
+	table->size--;
 	return 0;
 }
 
@@ -213,20 +237,33 @@ int hash_table_cleanup(hash_table_t *table)
 	return 0;
 }
 
+int comparator(const void *p, const void *q)
+{
+	return strcmp(((const hash_table_entry_t *)p)->key, ((const hash_table_entry_t *)q)->key);
+}
+
 void hash_table_print(hash_table_t *table)
 {
-	int i;
+	int i, c;
 	hash_table_entry_t *p = NULL;
+	hash_table_entry_t list[table->size];
 
 	/*
-	 * For each bucket, iterate and print its linked list.
+	 * For each bucket, iterate and copy them into a list 
 	 */
+	c = 0;
 	for (i = 0; i < table->capacity; i++) {
 		p = table->entries[i]->next;
 		while (p != NULL) {
-			printf("%s %d\n", p->key, p->count);
+			memcpy(list + c, p, sizeof (hash_table_entry_t));
 			p = p->next;
+			c++;
 		}
+	}
+	// now sort the list for dictionary order
+	qsort(list, table->size, sizeof (hash_table_entry_t), comparator);
+	for (i = 0; i < table->size; i++) {
+		printf("%s %d\n", list[i].key, list[i].count);
 	}
 }
 
@@ -251,6 +288,11 @@ int main()
 	hash_table_insert(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
 	hash_table_insert(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
 	hash_table_insert(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
+	hash_table_insert(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
+	hash_table_print(table);
+	hash_table_delete(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
+	hash_table_delete(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
+	hash_table_print(table);
 	hash_table_insert(table, "asldfjasldkjsflasjdfashdfajkdhfkajjdsklfajslkdfjalsdkjfalkj");
 	hash_table_print(table);
 	hash_table_cleanup(table);
