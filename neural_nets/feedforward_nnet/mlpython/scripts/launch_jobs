@@ -1,0 +1,197 @@
+#! /usr/bin/env python
+
+# Copyright 2011 Hugo Larochelle. All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+# 
+#    1. Redistributions of source code must retain the above copyright notice, this list of
+#       conditions and the following disclaimer.
+# 
+#    2. Redistributions in binary form must reproduce the above copyright notice, this list
+#       of conditions and the following disclaimer in the documentation and/or other materials
+#       provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY Hugo Larochelle ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+# FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Hugo Larochelle OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# The views and conclusions contained in the software and documentation are those of the
+# authors and should not be interpreted as representing official policies, either expressed
+# or implied, of Hugo Larochelle.
+
+msg = """Usage: launch_jobs batch_name machines job_desc'
+
+where:
+
+       - batch_name:  name designating the jobs batch
+       - machines:    string determining on which machines to launch jobs,
+	              and maximum number of jobs to run on each. 
+       - job_desc:    string describing the jobs to launch. 
+
+Option "machines" should have the following format: machine1:maxjobs1,machine2:maxjobs2,...
+If the machine name is "localhost", then the jobs will be launched locally on this machine.
+
+Option "job_desc" should describe what command to run and how to vary the options
+of the command could be. For instance, if "job_desc" was 'program {val1,val2} {val3,val4}',
+then the following jobs would be launched:
+
+- program val1 val3
+- program val1 val4
+- program val2 val3
+- program val2 val4
+
+If the total number of jobs is greater than the total maximum of jobs allowed by "machines",
+then the remaining jobs will be launched as soon as previous ones finish.
+
+The output from each of those commands would be put in seperate files of a directory with
+name "batch_name". 
+
+Example of use: ::
+
+  launch_jobs jobs_svm_train cluster30:4,cluster31:4 'python my_svm_script.py {1,2,3,4} {100,10,1}'
+
+"""
+
+
+import sys
+import string
+import os
+import time
+import random
+from subprocess import *
+
+processes = []
+process_jobs = []
+process_machines = []
+prob_chars = string.whitespace + ';()\'./\\'
+prob_chars_mapping = string.maketrans(prob_chars,'_' * len(prob_chars))
+#msg = 'Usage: launch_jobs job_name machine1:maxjobs1,machine2:maxjobs2 \'job {val1,val2,val3}\''
+
+# Finds the list of jobs associated to the a formated job command
+def get_list_jobs(cmd):
+    i1 = cmd.find('{')
+    i2 = cmd.find('}')
+
+    if i1 < 0:
+        list_jobs = [cmd]
+    else:
+        beg_cmd = cmd[0:i1]
+        options = cmd[i1+1:i2].split(',')
+        end_cmd = cmd[i2+1:]
+        list_jobs = []
+        for opt in options:
+            list_jobs += get_list_jobs(beg_cmd + opt + end_cmd)
+            
+    return list_jobs
+
+# Launches a job and returns the subprocess handle
+def launch_job(job, output_file):
+    f = open(output_file, 'w')
+    p = Popen(job, shell=True, stdin=PIPE,stdout=f,stderr=STDOUT)
+    return p
+
+# Updates the processes (and other job tracking information),
+# by removing the processes that have finished.
+def update_process_list(processes,process_jobs,process_machines,njobs):
+    i=0
+    while i < len(processes):
+        p = processes[i]
+        if p.poll() != None:
+            print 'Job \'' + process_jobs[i] + '\' is finished'
+
+            del processes[i]
+            njobs[process_machines[i]] -= 1
+            del process_machines[i]
+            del process_jobs[i]
+        else:
+            i+=1
+
+# Chooses a machine to launch a job among 'jobs',
+# launches that job and updates tracking informations
+def launch_and_track(list_jobs,processes,process_jobs,process_machines,machines,maxjobs,njobs,expdir):
+    job = list_jobs.pop(0)
+    job_output_file = 'out_' + job.translate(prob_chars_mapping)
+    # Check if filename is too launch
+    if len(job_output_file) > 255:
+        rnd_tag = str(random.randint(1,999))
+        job_output_file = job_output_file[:255]
+        job_output_file = job_output_file[:-3] + rnd_tag
+    job_output_file = expdir + '/' + job_output_file
+    machine_id = find_free_machine(maxjobs,njobs)
+    machine = machines[machine_id]
+
+    # Format job appropriately and choose machine on which to launch
+    if machine == 'localhost':
+        job = 'cd ' + expdir + '/../ ;' + job  
+    else:
+        job = 'ssh ' + machine + ' "cd ' + expdir + '/../ ;' + job + '"'
+
+    # Launch job and keep track of information about jobs
+    process_machines += [machine_id]
+    njobs[machine_id] += 1
+    processes += [launch_job(job, job_output_file)]
+    process_jobs += [job]
+    print 'Job \'' + job + '\' was launched'
+
+
+# Function that returns id of a free machine,
+# according the number of jobs on each machine
+# (given by njobs)
+def find_free_machine(maxjobs,njobs):
+    for id in range(len(maxjobs)):
+        if njobs[id] < maxjobs[id]:
+            return id
+    return -1
+
+def main(argv):
+    # Get job name
+    job_name = argv[1]
+    job_name = job_name.translate(prob_chars_mapping)
+
+    # Get names of machines and max. number of jobs on each
+    machines_and_maxjobs = argv[2].split(',')
+    machines = [ mm.split(':')[0] for mm in  machines_and_maxjobs ]
+    maxjobs = [ int(mm.split(':')[1]) for mm in  machines_and_maxjobs ]
+    totmaxjobs = reduce( lambda x,y: x+y, [ 0 ] + maxjobs )
+
+    # Get commands to launch
+    cmd = argv[3]
+    list_jobs = get_list_jobs(cmd)
+
+    # Make expdir
+    expdir = os.getcwd() + '/' +job_name
+    os.system('mkdir ' + expdir)
+
+    # Launch jobs
+    njobs = [0] * len(machines)
+    while len(processes) < totmaxjobs and len(list_jobs) > 0:
+        launch_and_track(list_jobs,processes,process_jobs,process_machines,machines,maxjobs,njobs,expdir)
+
+    while len(processes) > 0:
+        time.sleep(1) # Check if new jobs can be launched every second
+        update_process_list(processes,process_jobs,process_machines,njobs)
+        if len(list_jobs) > 0 and len(processes) < totmaxjobs:
+            launch_and_track(list_jobs,processes,process_jobs,process_machines,machines,maxjobs,njobs,expdir)
+    print 'All jobs finished'
+
+if __name__ == '__main__':
+    if len(sys.argv)>1 and sys.argv[1] == '-help':
+        print msg
+    elif len(sys.argv) != 4:
+        #print 'ERROR: found', len(sys.argv)-1, 'arguments, expected 3'
+        print msg
+    else:
+        try: 
+            main(sys.argv)
+        finally:
+            # Show jobs that are still running
+            for j in process_jobs:
+                print 'Job \'' + j + '\' is still running'
+                

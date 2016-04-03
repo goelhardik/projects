@@ -1,0 +1,60 @@
+.. MLPython documentation master file, created by sphinx-quickstart on Mon Nov  8 17:31:57 2010.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to MLPython's documentation!
+====================================
+
+MLPython is a library for organizing machine learning
+research. There are two reasons why you might be interested in MLPython:
+
+1. to rapidly gain access to many datasets and learning algorithms or
+2. to organize your own machine learning research into a consistent,
+   flexible and simple framework.
+
+I developed MLPython to support my own research. I wanted a system that would
+allow me to quickly experiment with new research ideas. Having found it
+to deliver well on this account, I decided to share MLPython with others.
+I hope you enjoy it!
+
+* :ref:`install`: Details on how to download and install MLPython.
+* :ref:`tutorial`: A walk-through over diffrent examples of how to use MLPython.
+* :ref:`extend`: Guidelines for contributing to MLPython and extending it.
+* :ref:`library`: Detailed documentation, extracted from the source code docstrings.
+
+Here's a quick peek at what MLPython let's you do: ::
+
+   import numpy as np
+   import mlpython.datasets.store as dataset_store
+   from mlpython.learners.classification import NNet
+   from mlpython.learners.features import RBM
+
+   dataset_store.download('mnist')
+   trainset,validset,testset = dataset_store.get_classification_problem('mnist')
+
+   nnet = NNet(n_stages=10)
+   nnet.train(trainset)
+
+   outputs,costs = nnet.test(testset)
+   print 'Classification error on test set is',np.mean(costs,axis=0)[0]
+
+As is probably obvious, this code snippet downloads the MNIST dataset,
+trains a feed-forward neural network for 10 iterations on it and
+finally computes the average classification error on a test set.
+
+.. toctree::
+   :maxdepth: 1	
+   :hidden:
+
+   install
+   tutorial
+   extend
+   library
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+

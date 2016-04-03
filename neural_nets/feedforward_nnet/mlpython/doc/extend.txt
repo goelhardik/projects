@@ -1,0 +1,469 @@
+.. _extend:
+
+Extending MLPython
+======================
+
+.. contents::
+
+You'd like to contribute new pieces to MLPython? Great! Here are some
+guidelines for how to do it (it is assumed that the reader as gone
+through the :ref:`tutorial` section).
+
+Implementation Philosophy
+-------------------------
+
+
+First, a few words about the main guiding philosophy behind MLPython.
+
+When I started designing MLPython, I decided that it should not only
+be simple to use (dah!) but also be based on a simple implementation.
+While this later choice can seem odd and is admittedly due to my limited
+Python expertise, it is also motivated by the wish that other
+programmers with equal or worse Python programming experience be able
+to contribute to it. This is important, since the machine
+learning community includes not just computer scientists but also
+mathematicians and statisticians with varying programming skills.
+Hence, given the vast array of learning algorithms in the literature,
+it made sense to focus on an implementation which would require
+as little time as possible for someone to start contributing to it.
+
+Moreover, the combined simplicity and expressiveness of Python means
+that many aspects of a machine learning framework need not be
+implemented by complex class hierarchies. Often, a simple script can
+do the job and be much easier to understand. MLPython follows this
+intuition by using a (shallow) class hierarchy only for the learning
+algorithms and for processed datasets (:ref:`mlproblems`).  The rest
+of the framework relies on a set of functions in modules, for instance
+to load the raw datasets or perform some desired visualization.
+
+A lot of thought has also been put into the class hierarchies in order
+to strip down their complexity, mainly by restricting each class to
+only a few methods.  For example, a learning algorithm or
+:ref:`Learners` object only requires four methods (plus the
+constructor).  The most complicated component of MLPython probably
+corresponds to the MLProblems, but even then, MLProblems are really
+just iterator objects, with some additional properties (referred to as
+metadata).
+
+Finally, MLPython relies a lot on conventions and on duck-typing
+("if it looks like a duck and quacks like a duck, it must be a duck").
+The user should focus on making sure that the different objects being
+combined behave correctly (e.g. that an MLProblem passed to some
+Learner defines all the metadata that this Learner expects), and less
+on what types these objects are. Consequently, all code should be well
+documented, with docstrings that are explicit about how each object should
+be used.
+
+Most contributions to MLPython will probably consist in a new dataset
+or a new learning algorithm. Contributions of interfaces to
+third-party software are also encouraged. Other contributions, such as
+implementations of new MLProblems, are also welcome but will require
+deeper knowledge of the MLPython library. 
+
+Datasets
+--------
+
+Adding support in MLPython for a new dataset is very simple. First,
+you must add a new module to the ``mlpython.datasets`` package, with
+the name corresponding to the dataset's name (e.g. module ``mlpython.datasets.mnist`` 
+for the MNIST dataset). This new module should provide two functions:
+
+
+* ``obtain(dir_path)``:                     Downloads the dataset in directory ``dir_path``.
+* ``load(dir_path, load_to_memory=False)``:  Returns the data and metadata corresponding to the training, validation and test sets for this dataset at path ``load_to_memory``. The ``load_to_memory`` argument should let the user decide whether the dataset is loaded in memory or is kept on disk.
+
+The ``obtain`` should put the data in a format which will facilitate
+loading the dataset (in memory or on disk). The option of not loading
+the dataset in memory is important: it will come useful if a dataset
+is particularly big or if the data only needs to be transferred to
+another device, for instance a GPU. If ``mlpython.datasets`` currently
+contains a dataset of similar nature to your new dataset, looking at
+its module should give a better idea of how to create the new dataset
+module.
+
+The second and final step to adding a new dataset is to add support
+for it in the ``mlpython.datasets.store`` module. To do this, simply
+add the string name of the dataset module to any of the
+``datasets.store.*_names`` variables (which are sets of string)
+corresponding to appropriate machine learning problems for your new
+dataset. For instance, string ``'mnist'`` is found in
+``datasets.store.classification_names``. You might want to take a look
+at the associated ``datasets.store.get_*_problem`` function that loads
+the dataset's data and metadata to create the MLProblems, so as to see
+which MLProblem will be created and what is expected from the data and
+metadata returned by the dataset's ``load`` function (e.g. what
+keywords should the metadata have).
+
+MLProblems
+----------
+
+In a nutshell, an MLProblem object is an iterator object with a length and two 
+simple but important methods:
+
+* ``setup(self)``:  This method is usually called at the end of the construction the object. It adapts the MLProblem's internal state based on the data it contains, if needed.
+* ``apply_on(self, new_data, new_metadata={})``:  Returns an MLProblem that contains the new data and metadata, but that is "compatible" with the given MLProblem.
+
+As described in the :ref:`tutorial` section, an MLProblem is
+constructed from a source of data and some optional metadata
+dictionary. The only thing that can be assumed about the source data
+is that it is possible to iterate over it (i.e. it has a
+``__iter__()`` method that outputs an iterator). In other words, you
+should not access its content by indexation or any other way than
+iterating.
+
+When constructing a new MLProblem, it is recommended to start from the following skeleton: ::
+
+   import copy
+   from mlpython.mlproblems.generic import MLProblem
+   
+   class MyProblem(MLProblem):
+       """
+       ONE LINE DESCRIPTION
+       
+       MULTILINE DESCRIPTION, WITH OPTION DESCRIPTIONS
+   
+       """
+   
+       def __init__(self, data=None, metadata={},call_setup=True):  # Add other arguments if needed
+
+           # Always call the superclass's constructor (here MLProblem)
+           MLProblem.__init__(self,data,metadata)
+   
+           # Set the object's constructor option based on the
+           # constructors arguments other than data, metadata and
+           # call_setup (those are dealt with by the superclass).
+           
+	   # PUT CODE HERE
+   
+           # Call setup *at the end* of the constructor, if call_setup is True
+           if call_setup: MyProblem.setup(self)
+   
+       def setup(self):
+           # Set the internal state of the MLProblem, based on its source data.
+           # This could require the setting of object fields or the assignment
+           # of new metadata.
+	   
+           # PUT CODE HERE, OTHERWISE PASS
+	   pass
+   
+       def __iter__(self):
+           # Iterate over source data and yield each example with appropriate processing
+	   for example in self.data:
+              # IF CHANGING example, USE A DEEPCOPY
+	      new_example = copy.deepcopy(example)
+
+              # PUT CODE HERE (DO SOMETHING TO new_example)
+
+              yield new_example
+
+       def __len__(self):
+           # Outputs the number of examples in the dataset
+
+           # IMPLEMENT ONLY IF THE LENGTH OF DIFFERENT FROM
+           # THE NUMBER OF ELEMENTS ITERATED OVER BY self.data,
+           # OTHERWISE SIMPLY INHERIT FROM PARENT CLASS OR
+           return MLProblem.__len__(self)
+
+
+       def apply_on(self, new_data, new_metadata={}):
+           # Always check whether the source data is itself an MLProblem,
+           # so as to recursively call apply_on on it too
+           if self.__source_mlproblem__ is not None:
+               new_data = self.__source_mlproblem__.apply_on(new_data,new_metadata)
+               new_metadata = {}   # new_data should already contain the new_metadata, since it is an mlproblem
+   
+           # Construct new MLProblem of the same class, with call_setup =
+           # False since we want to use the same internal state
+           new_problem = MyProblem(new_data,new_metadata,call_setup=False) # Pass same other constructor arguments
+   
+           # Copy internal state information to the new MLProblem
+
+           # PUT CODE HERE
+   
+           return new_problem
+
+In most cases, you'll only have to replace the ``PUT CODE HERE``
+comments by appropriate code implementing the desired behavior. The
+rest of the code already present in the methods of the above template
+should also be present. Its main purpose is to correctly support the
+composition of MLProblems one into another. Also, method ``__len__()`` 
+should only be defined if it should output something different than
+``len(self.data)``.
+
+To better illustrate how MLProblem objects are implemented, let's
+consider an example. Imagine that you wish to write an MLProblem that
+takes some data and centers it, i.e. removes the mean of each
+input. Let's call that object CenteredProblem. However, the value of
+the means to subtract is not known a priori and depends on the
+data. In this case, the role of ``setup()`` would be to compute the
+means of the each input and save the information within the object.
+
+Now, assume you have centered your training set, and now wish to apply
+exactly the same processing to some new data (for instance the test
+set). This is when you call ``apply_on()``. Its role will be to take
+the new data, create a new CenteredProblem object containing that data and
+setting the internal state of this new object such that it subtracts
+the *same* means.
+
+More specifically, here is what CenteredProblem's implementation would look like: ::
+
+   import copy
+   from mlpython.mlproblems.generic import MLProblem
+
+   class CenteredProblem(MLProblem):
+       """
+       Centers the input of a dataset.
+       
+       Option ``input_index`` is the value of the index corresponding to
+       the input, for each example. If ``None``, then the example itself
+       is the input.
+   
+       """
+   
+       def __init__(self, data=None, metadata={},call_setup=True,input_index=None):
+           # Always call the superclass's constructor (here MLProblem)
+           MLProblem.__init__(self,data,metadata)
+   
+           # Set the object's constructor option based on the
+           # constructors arguments other than data, metadata and
+           # call_setup (those are dealt with by the superclass).
+           self.input_index = input_index
+   
+           # Call setup *at the end* of the constructor, if call_setup is True
+           if call_setup: CenteredProblem.setup(self)
+   
+       def setup(self):
+           # Set the internal state of the MLProblem, based on its source data.
+
+           # Compute average of the inputs
+           first_example = True
+           for example in self.data:
+               if first_example:
+                   # Use first example to initialize the average
+                   first_example = False
+                   if self.input_index is None:
+                       self.center = copy.deepcopy(example)
+                   else:
+                       self.center = copy.deepcopy(example[self.input_index])
+               else:
+                   if self.input_index is None:
+                       self.center += example
+                   else:
+                       self.center += example[self.input_index]
+           self.center /= len(self.data)
+   
+       def __iter__(self):
+           # Iterate over source data and yield copy of example with centered input
+           for example in self.data:
+               centered_example = copy.deepcopy(example)
+               if self.input_index is None:
+                   centered_example -= self.center
+               else:
+                   centered_example[self.input_index] -= self.center
+               yield centered_example
+   
+       def apply_on(self, new_data, new_metadata={}):
+           # Always check whether the source data is itself an MLProblem,
+           # so as to recursively call apply_on on it too
+           if self.__source_mlproblem__ is not None:
+               new_data = self.__source_mlproblem__.apply_on(new_data,new_metadata)
+               new_metadata = {}   # new_data should already contain the new_metadata, since it is an mlproblem
+   
+           # Construct new MLProblem of the same class, with call_setup =
+           # False since we want to use the same internal state
+           new_problem = CenteredProblem(new_data,new_metadata,call_setup=False,input_index=self.input_index)
+   
+           # Copy internal state information to the new MLProblem
+           new_problem.center = copy.deepcopy(self.center)
+   
+           return new_problem
+ 
+Another interesting example is the ClassSubsetProblem, for which
+`setup()` and `apply_on` must deal with the correct assignment of
+metadata. It is recommended to take a look at the source code
+(see :ref:`mlproblems_classification`).
+
+Finally, here are a few guidelines to follow when implementing a new MLProblem:
+
+* When implementing the ``__iter__()`` method, be careful not to modify the content of the source
+  data. Either yield a modified (deep) copy of the example, or yield the example itself
+  if it isn't modified. Also, each yielded example should be a distinct object. For instance, do
+  not return a pointer to a unique object whose content is changed while iterating.
+* It is a good idea to make your MLProblem compatible with as many types of examples as possible. 
+  A fairly general assumption is that examples are going to be either a single (for instance an input
+  without a target) or a tuple/list of (for instance an input and its target) elements. These
+  elements could be a various nature (NumPy arrays of arbitrary dimension, integers, strings, etc.).
+  All such assumptions should be clearly commented in the class's docstring (see :ref:`documenting_code`)
+* The requirement that ``apply_on()`` output the same type of MLProblem is not a strict one. There are
+  cases where it's actually not what you want to do. An example is the SemisupervisedProblem (see :ref:`mlproblems_generic`)
+  which removes labels of a subset of the example. This is probably not what you want to do on new data,
+  like the test set, hence this object's ``apply_on()`` either returns a basic MLProblem or an MLProblem
+  of the same type as the source data (see :ref:`mlproblems_generic` for the source code).
+
+Learners
+--------
+
+As mentioned in the :ref:`tutorial` section, Learner objects should
+define the four following methods, in addition to the constructor:
+
+* ``train(self,trainset)``: runs the learning algorithm on ``trainset`` (it returns nothing).
+* ``forget(self)``: resets the Learner to it's original state (also return nothing).
+* ``use(self,dataset)``: computes and returns the output of the Learner for ``dataset``. 
+  The method should return an iterator over these outputs.
+* ``test(self,dataset)``: computes and returns the outputs of the Learner as well as the cost of 
+  those outputs for ``dataset``. The method should return a pair of two iterators, the first
+  being over the outputs and the second over the costs.
+
+As for the constructor, it should be used to set the different
+hyper-parameters of the Learner. Of course, do not forget to inherit from Learner.
+
+And that's it! Obviously, one is free to implement other methods, but
+as far as MLPython is concerned, a Learner only need to be trainable,
+usable and testable, and it should be possible to have it forget its
+learned state so as to retrain from scratch.
+
+That being said, in addition to implementing these methods, it is as
+important to clearly and thoroughly document the code. Particular care
+is required in documenting the object's documentation through its
+docstring. It will specify things like the meaning of the options or
+hyper-parameters of the Learner and the metadata required in the
+MLProblems that can be fed to the Learner. See :ref:`documenting_code`
+for more on this crucial aspect.
+
+Contributions of interfaces to third-party software is also encouraged.
+All such code should be incorporated as a separate subpackage the within
+``mlpython.learners.third_party`` package. The associated directory
+should also contain a README file with instructions on how to download
+and install the necessary software. Finally, please mention this
+dependency in the :ref:`install` section.
+
+Common metadata keywords
+------------------------
+
+Though the characterization of the metadata in an MLProblem does not
+need to follow any particular rules, there are already several
+keywords that are being commonly defined and used within the
+MLProblems and Learners in MLProblem right now. Hence, before
+inventing a new metadata keyword, it is highly recommended to first
+make sure that an equivalent keyword is not already in use.  Adopting
+such keywords will then increase the compatibility of your code with
+that of other components already present in MLPython.
+
+Here is a list of keywords you should consider using:
+
+* ``'input_size'``: Size of the input.
+* ``'target_size'``: Size of the target, (for instance for multilabel or multiregression).
+* ``'length'``: Number of examples in a dataset. Not always necessary, but is useful for large
+  datasets for which the length would be too long to compute.
+* ``'targets'``: A Set of all possible targets (in string format).
+* ``'class_to_id'``: Dictionary mapping a string class label to an index (from 0 to number of classes).
+* ``'n_queries'``: Number of queries (ranking problem). Similarly to ``length``, it is optional 
+  and will set the output of ``__len__(self)`` in RankingProblem.
+* ``'scores'``: List of possible scores, ordered from less relevant to more relevant (ranking problem).
+* ``'n_pairs'``: Number of document/query pairs (ranking problem). Same as ``n_queries``, but for RankingToClassificationProblem.
+
+If you contribution code to MLPython that uses a different keyword,
+please add it to this list, as well as to the text file
+mlpython/metadata_keywords.txt.
+
+Mathutils
+---------
+
+While Python is a very flexible language, it can be painfully slow for
+certain operations. In such cases, implementing a C function and
+embedding it into Python is a much better approach. The
+``mlpython.mathutils`` contains such functions, for several common 
+mathematical operations in machine learning. It currently has
+two modules:
+
+* ``mlpython.mathutils.linalg``: Linear algebra operations, such as matrix products, linear solver, etc.
+* ``mlpython.mathutils.nonlinear``: Nonlinear operations, including the sigmoid function and its derivative.
+
+These modules correspond to Python code that define the different
+module functions, where each function calls its associated core C
+implementation. The idea is that the Python code should do things like
+testing conditions on the arguments of the function, and the core C
+function should do the rest of the work. 
+
+To add functions to the modules or even add new modules, it is
+recommended to follow the same Python/C coding approach. However, you
+are free to use any C binding tool for embedding the C code into
+Python. Instead of implementing complete C extensions as currently
+does ``mlpython.mathutils.linalg`` and
+``mlpython.mathutils.nonlinear`` (see
+http://www.scipy.org/Cookbook/C_Extensions/NumPy_arrays for more
+details on this), one could instead implement regular C functions and
+use `ctypes <http://docs.python.org/library/ctypes.html>`_ to access
+them. Finally, make sure that calling the Makefile will compile the
+new C code.
+
+.. _documenting_code:
+
+Documenting your code
+-----------------------
+
+Whether you are adding a new module, object or function in MLPython,
+it is primordial that you provide good documentation for it. In
+particular, any such code should come with a clear and thorough
+docstring (see
+http://packages.python.org/an_example_pypi_project/sphinx.html#full-code-example
+for example of code with docstrings). 
+
+One reason why this is important is that the :ref:`library` is
+actually automatically generated from these docstrings. It is
+generated using `Sphinx <http://sphinx.pocoo.org/>`_, which itself
+uses `reStructuredText <http://docutils.sourceforge.net/rst.html>`_ as
+its markup language (see
+http://docutils.sourceforge.net/docs/user/rst/quickref.html for a
+quick overview of reStructuredText).
+
+The other reason why writing good docstrings is important is that this
+is where users will find information for how to use your code.  In
+most cases, contributions will consist in a new dataset module, or a
+new Learner/MLProblem class. The docstring should then specify what
+options/hyper-parameters must be provided, what metadata is required
+by the object and what metadata is defined (for dataset modules and
+MLProblem classes only). If appropriate, references to papers or
+websites can also be given in the docstring. 
+
+Here is a short template of what a class docstring should look like: ::
+
+   class MyNewClass(MyParentClass):
+      """
+      Short description of MyNewClass
+
+      Longer description of MyNewClass
+   
+      **Options:**
+
+      * ``hyper_param_1``:       Description of first hyper-parameter.
+      * ``hyper_param_2``:       Description of second hyper-parameter.
+   
+      **Required metadata:**
+
+      * ``'metadata_in'``:        Description of metadata (optional, perhaps only if unsual metadata)
+   
+      **Defined metadata:**
+
+      * ``'metadata_out'``:       Description of metadata defined/added by object (for MLProblems)
+   
+      | **Reference:** 
+      | Name of paper or website
+      | List of paper/website authors (last name only
+      | URL to paper/website
+
+      """
+
+Whether you are considering contribution a package, module, class or
+function, it is recommended to look at the docstring of other such
+structures already in MLPython first, to get a few examples of what
+docstrings should contain. These docstring always follow the
+reStructuredText markup language. 
+
+A common style convention followed by all docstrings is that, When
+designating a package, module, function, variable or a one-line Python
+expression, put its name between pairs of \`\`backward single
+quotes\`\`. For example, \`\`mlpython.learners.generic\`\` will show
+up as ``mlpython.learners.generic``. However, when referring to a
+class name, quotes don't need to be use.
+

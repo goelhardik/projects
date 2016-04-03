@@ -1,0 +1,21 @@
+syntax: glob
+learners/third_party/treelearn/bagging.py
+learners/third_party/treelearn/constant_leaf.py
+learners/third_party/treelearn/random_forest.py
+learners/third_party/treelearn/randomized_tree.py
+learners/third_party/treelearn/svm_tree.py
+learners/third_party/treelearn/test_randomized_tree.py
+learners/third_party/treelearn/test_tree_helpers.py
+learners/third_party/treelearn/tree_helpers.py
+learners/third_party/treelearn/tree_node.py
+learners/third_party/word2vec/trunk
+
+syntax: regexp
+.DS_Store
+.*\.pyc$
+.*\.so$
+.*\.o$
+.*\.egg-info$
+.*~$
+^doc/_.*
+^doc/\..*

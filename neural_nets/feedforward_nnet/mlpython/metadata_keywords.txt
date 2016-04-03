@@ -1,0 +1,13 @@
+Here is a list of common keywords for the metadata entries. 
+Try to reuse these terms as much as possible, and contribue 
+new terms if some concepts are missing!
+
+* ``'input_size'``:    Size of the input.
+* ``'target_size'``:   Size of the target, (for instance for multilabel or multiregression).
+* ``'length'``:        Number of examples in a dataset. Not always necessary, but is useful for large datasets for which the length would be too long to compute.
+* ``'targets'``:       A Set of all possible targets (in string format).
+* ``'class_to_id'``:   Dictionary mapping a string class label to an index (from 0 to number of classes).
+* ``'n_queries'``:     Number of queries (ranking problem). Similarly to ``length``, it is optional and will set the output of ``__len__(self)`` in RankingProblem.
+* ``'scores'``:        List of possible scores, ordered from less relevant to more relevant (ranking problem).
+* ``'n_pairs'``:       Number of document/query pairs (ranking problem). Same as ``n_queries``, but for RankingToClassificationProblem.
+

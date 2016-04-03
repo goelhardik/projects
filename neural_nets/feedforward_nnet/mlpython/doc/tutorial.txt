@@ -1,0 +1,821 @@
+.. _tutorial:
+
+Tutorial: How to use MLPython
+=============================
+
+.. contents::
+
+Datasets
+--------
+
+MLPython comes with support for several datasets (see the
+:ref:`datasets` library documentation for a list). To use a supported
+dataset, module ``mlpython.datasets.store`` should be used. It
+provides procedures for downloading datasets and creating machine
+learning problems from them.
+
+First, the dataset must be downloaded (and so only once). To download 
+dataset with name ``dataset_name``, simply do the following: ::
+
+   import mlpython.datasets.store as dataset_store
+   dataset_store.download(dataset_name)
+
+Then, ``mlpython.datasets.store`` provides several functions that will
+create a specific machine learning problem (classification, distribution
+estimation, etc.)  from a downloaded dataset. These functions all
+return a training, validation and test split. Here are a few examples
+of using such functions (see the :ref:`datasets` library documentation 
+for more such functions): ::
+
+   # Generate a classification problem
+   trainset,validset,testset = dataset_store.get_classification_problem(dataset_name)
+   
+   # Generate a regression problem
+   trainset,validset,testset = dataset_store.get_regression_problem(dataset_name)
+   
+   # Generate a distribution estimation problem
+   trainset,validset,testset = dataset_store.get_distribution_problem(dataset_name)
+
+   # Generate a multilabel classification problem
+   trainset,validset,testset = dataset_store.get_multilabel_problem(dataset_name)
+
+Not all datasets can be converted to all different problems. Module
+``mlpython.datasets.store`` also contain Python sets of strings containing the
+datasets supported for each machine learning problem (see variables
+with name ending in ``names``,
+e.g. ``mlpython.datasets.store.classification_names``).
+
+
+By default, datasets will be downloaded in the directory given by
+environment variable MLPYTHON_DATASET_REPO, more specifically in a
+subdirectory with the same name as the dataset's. If
+MLPYTHON_DATASET_REPO isn't defined, or if you wish to specify some
+other path for where to download the dataset, a different path can be
+specified through argument ``dataset_dir``. The same is true for
+the functions that generate the machine learning problems.
+
+Module ``mlpython.datasets.store`` provides other useful functions,
+such as functions to generate a K-fold cross-validation experiment or
+a semi-supervised learning experiment. For more information see the
+:ref:`datasets` library documentation.
+
+Processed datasets: MLProblems
+------------------------------
+
+For a dataset to be fed to a Learner, it must correspond to an MLProblem. 
+
+MLProblem objects are simply iterators with some extra properties.
+Hence, from an MLProblem, examples can be obtained by iterating over
+the MLProblem. 
+
+MLProblem objects also contain metadata, i.e. "data about the
+data". For instance, the metadata could contain information about the
+size of the input or the set of all possible values for the
+target. The metadata (field ``metadata`` of an MLProblem) is
+represented by a dictionary mapping strings to arbitrary objects.  
+
+If you always use ``mlpython.datasets.store`` to generate MLProblems,
+you will probably never need to create MLProblems from scratch
+yourself, since all datasets returned by this module are already
+MLProblems. However, if you are facing an unusual learning paradigm or
+wish to use a dataset that is not currently supported by MLPython, you will
+need to know how MLProblems work. 
+
+Here are instructions for how to manipulate MLProblems.
+To create an MLProblem, simply give the raw data over which
+iterating should be done and the dictionary containing the
+metadata: ::
+
+   >>> from mlpython.mlproblems.generic import MLProblem
+   >>> import numpy as np
+   >>>
+   >>> data = np.arange(30).reshape((10,3)) 
+   >>> metadata = {'input_size':3}
+   >>> mlpb = MLProblem(data,metadata)
+   >>> for example in mlpb:
+   ...     print example
+   ...
+   [0 1 2]
+   [3 4 5]
+   [6 7 8]
+   [ 9 10 11]
+   [12 13 14]
+   [15 16 17]
+   [18 19 20]
+   [21 22 23]
+   [24 25 26]
+   [27 28 29]
+
+
+Each Learner will require a specific structure within each example. For instance,
+a supervised learning algorithm will require that examples decompose into two 
+parts, an input and a target::
+
+   >>> data = [ (input,np.sum(input)) for input in np.arange(30).reshape((10,3))]
+   >>> metadata = {'input_size':3}
+   >>> mlpb = MLProblem(data,metadata)
+   >>> for input,target in mlpb:
+   ...     print input,target
+   ...
+   [0 1 2] 3
+   [3 4 5] 12
+   [6 7 8] 21
+   [ 9 10 11] 30
+   [12 13 14] 39
+   [15 16 17] 48
+   [18 19 20] 57
+   [21 22 23] 66
+   [24 25 26] 75
+   [27 28 29] 84
+
+Each Learner object will expect a certain structure within the
+example, and it is the job of MLProblem to be compatible with the
+Learner's expected example structure.
+
+Some MLProblem objects might require that specific metadata keys be
+given and might also add some more. Here's an example to illustrate
+this concept. Imagine we wish to create a training set for a
+classification problem. To do this, we create a ClassificationProblem
+object, which requires the metadata ``'targets'`` that corresponds to
+the set of values that the target can take.  Moreover, after having
+created this new MLProblem, its metadata will now contain a key
+``'class_to_id'``. This key will be associated with a dictionary that
+maps target symbols to class IDs: ::
+
+   >>> from mlpython.mlproblems.classification import ClassificationProblem
+   >>> data = [ (input,str(input<5)) for input in range(10) ]
+   >>> metadata = {'targets':set(['False','True'])}
+   >>> trainset = ClassificationProblem(data,metadata)
+   >>> print trainset.metadata['class_to_id']
+   {'False': 1, 'True': 0}
+
+Learners will expect different kinds of metadata. The user should
+look at the MLProblem and Learner class docstrings in order to figure
+out which metadata are expected by these objects.
+
+Once the training set has been processed as desired, then
+the same processing should be applied to the other
+datasets, such as the test set, as follows: ::
+
+   >>> test_data = [ (input,str(input<5)) for input in [-2,-1,10,11] ]
+   >>> test_metadata = {'targets':set(['False','True'])}
+   >>> testset = trainset.apply_on(test_data,test_metadata)
+   >>> print testset.metadata['class_to_id']
+   {'False': 1, 'True': 0}
+
+This ensures that all datasets are coherent and share the relevant
+metadata, such as the ``class_to_id`` mapping for classification
+problems.  
+
+MLProblems can also be composed, one within another. For instance, to
+obtain a subset of the examples of a classification problem, a
+ClassificationProblem object can be fed to a SubsetProblem::
+
+   >>> from mlpython.mlproblems.generic import SubsetProblem
+   >>> subsetpb = SubsetProblem(trainset,subset=set(range(0,10,2)))
+   >>> for example in subsetpb:
+   ...     print example
+   ... 
+   (0, 0)
+   (2, 0)
+   (4, 0)
+   (6, 1)
+   (8, 1)
+   >>> print subsetpb.metadata
+   {'targets': set(['True', 'False']), 'class_to_id': {'False': 1, 'True': 0}}
+
+The new MLProblem will inherit the metadata from the previous
+MLProblem. Additional metadata can also be given explicitly in the
+constructor, as before. If there is overlap between the keys of the
+previous MLProblem and the metadata explicitly given to the
+constructor, the later will have priority. 
+
+When composing MLProblems (effectively forming a series of
+MLProblems), it is important to note that ``apply_on()`` should be
+given data in the same form as the source data for the *first*
+MLProblem in the series. In the current example, this would imply
+calling ``subsetpb.apply_on(test_data,test_metadata)``, *not*
+``subsetpb.apply_on(testset)`` (``apply_on()`` can also take an
+MLProblem as input). Moreover, metadata added explicitly by the user
+when constructing any of the MLProblems in the series, will be ignored
+by the ``apply_on()`` procedure, and will not be added to the
+MLProblem for the new data. Only the metadata added by the MLProblems
+*internally* will be dealt with by the ``apply_on()`` procedure.
+
+Another useful MLProblem object for composing MLProblems is
+PreprocessedProblem, which provides a general approach for creating a
+new MLProblem from the content of another "source" MLProblem, by using
+a provided transformation or preprocessing function to apply to each
+example in the source: ::
+
+   >>> from mlpython.mlproblems.generic import PreprocessedProblem
+   >>> def preproc(example,metadata):
+   ...     input,target = example
+   ...     metadata['input_size'] = 2 # Make sure 'input_size' is correctly set
+   ...     return ([3*input,input-4],target)
+   ... 
+   >>> new_trainset = PreprocessedProblem(trainset,preprocess=preproc)
+   >>> for input,target in new_trainset:
+   ...     print input,target
+   ... 
+   [0, -4] 0
+   [3, -3] 0
+   [6, -2] 0
+   [9, -1] 0
+   [12, 0] 0
+   [15, 1] 1
+   [18, 2] 1
+   [21, 3] 1
+   [24, 4] 1
+   [27, 5] 1
+
+Notice how the ``preproc`` function must also set the new value for
+the ``'input_size'`` metadata, since the preprocessing is changing the
+size of the input. Here too, the same preprocessing can then be applied
+on the test set using the ``apply_on`` method: ::
+
+   >>> for input,target in new_testset:
+   ...     print input,target
+   ... 
+   [-6, -6] 0
+   [-3, -5] 0
+   [30, 6] 1
+   [33, 7] 1
+   >>> print new_testset.metadata
+   {'input_size': 2, 'targets': set(['True', 'False']), 'class_to_id': {'False': 1, 'True': 0}}
+
+Finally, an MLProblem has a length, which can be obtained by simply
+calling function ``len()`` on the object (which calls the object's
+``__len__()`` method): ::
+
+   >>> len(trainset)
+   10
+   >>> len(subsetpb)
+   5
+
+The default behavior of ``__len__()`` in an MLProblem is to call
+``len()`` on its source data. However, since the only thing that can
+be assumed about the source data is that it is possible to iterate
+over it, this call might fail (for instance if the source data is not
+loaded in memory and is a File object). In that case, MLProblem will
+usually iterate over the source data and explicitly count the number
+of examples. When this is too expensive to be practical, it is
+possible to override this behavior by explicitly providing the length
+in the metadata at construction time, using the keyword
+``'length'``. MLProblem will then remember that value, remove the
+keyword from the metadata and always output that value for its
+length. Note that when using this overriding procedure, it is the
+user's responsibility to provide the correct value for the length.
+
+
+Learning algorithms: Learners
+-----------------------------
+
+Learning algorithms are implemented as Learner objects. Other than a
+constructor (which will take the value of the Learner's hyper-parameters), 
+Learners all have four basic methods:
+
+  
+* ``train(self, trainset)``:  Runs the learning algorithm on the MLProblem ``trainset``. Calling ``train`` a second time should not do anything, unless some of the hyper-parameters have changed (e.g. the training stopping criteria) or ``forget`` has been called.
+* ``forget(self)``:           Resets the Learner to its initial state.
+* ``use(self, dataset)``:     Computes and returns the output of the Learner for MLProblem ``dataset``. The method should return an iterator over these outputs (e.g. a list).
+* ``test(self, dataset)``:    Computes and returns the outputs of the Learner as well as the cost of those outputs for MLProblem ``dataset``. The method should return a pair of two iterators, the first being over the outputs and the second over the costs.
+  
+Learner objects are separated in different module, for different types
+of problems (classification, distribution estimation, etc.). See the
+:ref:`learners` library documentation for more information.
+
+My first experiments
+--------------------
+
+With knowledge of how to use the ``mlpython.datasets.store`` module and Learner
+objects, it is then easy to run a machine learning experiment. We will
+use the training of a neural network as a running example, to illustrate
+different ways of setting up an experiment with MLPython.
+
+The simplest experiment will typically require to load a dataset, 
+train a Learner object on the training set and report the error of the
+trained Learner on the test set. Here's an example of such an
+experiment with a neural network: ::
+
+   import numpy as np
+   import mlpython.datasets.store as dataset_store
+   from mlpython.learners.classification import NNet
+
+   # Load the dataset
+   #dataset_store.download('mnist')  # uncomment if the dataset has already been downloaded
+   trainset,validset,testset = dataset_store.get_classification_problem('mnist')
+
+   # Construct and train a Learner (here a neural network)
+   nnet = NNet(n_stages=10)
+   nnet.train(trainset)
+
+   # Compute the test error
+   outputs,costs = nnet.test(testset)
+   print 'Classification error on test set is',np.mean(costs,axis=0)[0]
+
+In this case, the neural network is trained for 10 full iterations
+over the training set, as indicated by option ``n_stages``. The other
+options or hyper-parameters of the neural network were set
+to their default values.
+
+Instead of specifying the number of iterations, it is common practice
+to use early stopping, i.e. track the error on a validation set
+as training progresses and stop once overfitting occurs. This
+only requires a small change to the above code: ::
+
+   import numpy as np
+   import copy
+   import mlpython.datasets.store as dataset_store
+   from mlpython.learners.classification import NNet
+
+   # Load the dataset
+   #dataset_store.download('mnist')  # uncomment if the dataset has already been downloaded
+   trainset,validset,testset = dataset_store.get_classification_problem('mnist')
+
+   # Construct neural network
+   nnet = best_nnet = NNet(n_stages=1)
+
+   # Setting up early stopping
+   best_val_error = np.inf
+   look_ahead = 10
+   n_incr_error = 0
+   max_it = 1000
+
+   print 'Training neural network'
+   for stage in range(1,max_it+1):
+       # Check if overfitting has been detected
+       if not n_incr_error < look_ahead:
+           break
+
+       # Train neural network for one more iteration
+       nnet.n_stages = stage
+       nnet.train(trainset)
+
+       # Look at validation set error
+       outputs, costs = nnet.test(validset)
+       error = np.mean(costs,axis=0)[0]
+
+       # See if validation error has increased
+       if error < best_val_error:
+           best_val_error = error
+           best_nnet = copy.deepcopy(nnet)
+       else:
+           n_incr_error += 1
+
+   nnet = best_nnet
+   # Compute the test error
+   outputs,costs = nnet.test(testset)
+   print 'Classification error on test set is',np.mean(costs,axis=0)[0]
+
+More specifically, this early stopping procedure stops learning when
+the error on the validation set has not improved for at least 10
+iterations. Then, the neural network is put back to its best state
+and the test error is reported.
+
+Finally, it is well known that the final solution obtained by a neural
+network depends highly on the initialization of its parameters. One
+popular initialization approach consists in pretraining those
+parameters by stacking several restricted Boltzmann machines (RBM),
+i.e. training each RBM on the hidden (feature) representation computed by
+the RBM below it. This can be achieved using the PreprocessedProblem
+object, by providing it with original data as well as a function
+that computes the appropriate hidden representation: ::
+
+   import numpy as np
+   import copy
+   import mlpython.datasets.store as dataset_store
+   from mlpython.learners.classification import NNet
+   from mlpython.learners.features import RBM
+   from mlpython.mlproblems.generic import PreprocessedProblem
+
+   # Load the dataset
+   #dataset_store.download('mnist')  # uncomment if the dataset has already been downloaded
+   trainset,validset,testset = dataset_store.get_classification_problem('mnist')
+
+
+   # Perform pretraining
+   hidden_sizes = [ 100, 200]
+   pretraining_n_stages = 5
+
+   print 'Pretraining hidden layers'
+   pretrained_Ws = []
+   pretrained_cs = []
+   for i,hidden_size in enumerate(hidden_sizes):
+
+       # Defining function that maps dataset 
+       # into last trained representation
+       def new_representation(example,metadata):
+           ret = example[0]
+           for W,c in zip(pretrained_Ws,pretrained_cs):
+               ret = 1./(1+np.exp(-(c + np.dot(W,ret))))
+           return ret
+       
+       # Create RBM training set using PreprocessedProblem
+       if i == 0:
+           new_input_size = trainset.metadata['input_size']
+       else:
+           new_input_size = hidden_sizes[i-1]
+       rbm_trainset = PreprocessedProblem(trainset,preprocess=new_representation,
+                                          metadata={'input_size':new_input_size})
+       
+       # Train RBM
+       print '... hidden layer ' + str(i+1),
+       new_rbm = RBM(n_stages = pretraining_n_stages,
+                     hidden_size = hidden_size)
+       new_rbm.train(rbm_trainset)
+       print ' DONE'
+
+       pretrained_Ws += [new_rbm.W]
+       pretrained_cs += [new_rbm.c]
+
+   # Construct neural network, with pretrained parameters
+   nnet = best_nnet = NNet(n_stages=1,
+                           pretrained_parameters = (pretrained_Ws,pretrained_cs) )
+
+   # Setting up early stopping
+   best_val_error = np.inf
+   look_ahead = 10
+   n_incr_error = 0
+   max_it = 1000
+
+   print 'Training neural network'
+   for stage in range(1,max_it+1):
+       # Check if overfitting has been detected
+       if not n_incr_error < look_ahead:
+           break
+
+       # Train neural network for one more iteration
+       nnet.n_stages = stage
+       nnet.train(trainset)
+
+       # Look at validation set error
+       outputs, costs = nnet.test(validset)
+       error = np.mean(costs,axis=0)[0]
+
+       # See if validation error has increased
+       if error < best_val_error:
+           best_val_error = error
+           best_nnet = copy.deepcopy(nnet)
+       else:
+           n_incr_error += 1
+
+   nnet = best_nnet
+   # Compute the test error
+   outputs,costs = nnet.test(testset)
+   print 'Classification error on test set is',np.mean(costs,axis=0)[0]
+
+We see that designing machine learning experiments is fairly simple
+given the right Learner and MLProblem components. A simple Python
+script should then suffice.
+
+Other tools
+-----------
+
+MLPython also comes with a few useful tools for either implementing
+new Learners or to perform data analysis:
+
+* :ref:`mathutils`: This package contains several useful functions to perform linear and nonlinear operations. A particular focus was put on allowing to call these functions such that no memory allocation is required within.
+* :ref:`misc`: This package provides module ``misc.io`` to facilitate the loading and saving of files (see :ref:`misc_io`) and module ``misc.visualize`` that allows for the visualization of datasets and images (see :ref:`misc_visualize`).
+
+Third-party Learners
+--------------------
+
+Certain Learners in MLPython only correspond to an interface to some
+third-party code. This is the case of the SVMClassifier object (see :ref:`learners_third_party_libsvm`), which
+is an interface to the LIBSVM library. All such Learner objects are
+part of their own subpackage, within the package
+``mlpython.learners.third_party`` (see :ref:`learners_third_party`).
+
+In such cases, the third-party code must be downloaded and installed
+separately. Instructions should be available in a README file, in the
+subdirectory corresponding to the object's package (for example,
+mlpython/learners/third_party/libsvm/).
+
+Useful scripts
+----------------
+
+There are some useful scripts that come with MLPython.
+
+* ``create_experiment_script``: This script prints in the standard output
+  an experiment script in Python. You can redirect this output into a file
+  and use it as is, or edit it to apply any additional modification. 
+
+  ``create_experiment_script`` takes several arguments from which the
+  resulted script will be generated with: ::
+
+   Usage: create_experiment_script TASK=task DATASET=dataset MODULE=mlpython.module LEARNER=Learner RESULTS=results_file.txt [EARLY_STOPPING=option_es BEG=1 INCR=1 END=500 LOOK_AHEAD=10 [EARLY_STOPPING_COST_ID=0] ] [KFOLD=5] [option1 option2]
+   	  or
+          create_experiment_script TASK=task TRAIN=train_file.libsvm VALID=valid_file.libsvm TEST=test_file.libsvm MODULE=mlpython.module LEARNER=Learner RESULTS=results_file.txt [EARLY_STOPPING=option_es BEG=1 INCR=1 END=500 LOOK_AHEAD=10 [EARLY_STOPPING_COST_ID=0] ] [KFOLD=5] [option1 option2]
+
+  The usage shows two different calls for the script. You can either
+  use MLPython's datasets or your own ``TRAIN``, ``VALID`` and
+  ``TEST`` files in libsvm format.
+
+  The arguments ``option1`` and ``option2`` are the Learner's hyper-parameters
+  that will be set when you call the generated experiment script (e.g.
+  ``python scrypt.py option1_value option2_value``).
+
+  The ``TASK`` argument is the task solved by the machine learning
+  experiment (e.g. ``distribution``, ``regression``, ``classification``,
+  ``multilabel``, etc.). 
+
+  The ``DATASET`` argument is the name of the
+  dataset the script will run on. More specifically, it is the name of
+  the MLPython dataset module (see :ref:`datasets` for a list).
+
+  The ``MODULE`` argument is the package (or module) containing the
+  machine learning algorithm (i.e. Learner) to be run. Normally, it
+  will be in MLPython (.e.g ``mlpython.learners.classification``) but
+  it could be you own personal package. The important is that
+  importing this package doesn't fail and that it contains the
+  desired Learner.
+
+  The ``LEARNER`` argument is the name of the Learner
+  that will be trained by the script. It is the name of a class
+  that inherits from MLPython's Learner class (see :ref:`learners`
+  for a list).
+
+  The ``RESULTS`` argument is the file path in which the generated script
+  will write its results. Each execution of the generated script will append
+  a result line to that file. 
+
+  Here is an example: ::
+
+   create_experiment_script TASK=classification DATASET=dna MODULE=mlpython.learners.classification LEARNER=NNet RESULTS=results_file.txt n_stages learning_rate > train_nnet.py
+   python train_nnet.py 50 0.001
+
+  If you have your own dataset split into train, validation and test
+  files, you can replace the argument ``DATASET`` by ``TRAIN``,
+  ``VALID`` and ``TEST``. The expected file format is the libsvm file format (datasets
+  in this format can be downloaded `here <http://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/>`_)
+
+  Here's an example of usage: ::
+
+   create_experiment_script TASK=classification TRAIN=train_file.libsvm VALID=valid_file.libsvm TEST=test_file.libsvm MODULE=mlpython.learners.classification LEARNER=NNet RESULTS=results_file.txt n_stages learning_rate > train_custom_nnet.py
+   python train_custom_nnet.py 50 0.001
+
+  It should be noted that, for string option values, quotes must be preceded by
+  a backslash for the script to treat it as an actual string: ::
+
+   create_experiment_script TASK=classification DATASET=dna MODULE=mlpython.learners.third_party.milk.classification LEARNER=TreeClassifier RESULTS=results_file.txt min_split criterion > train_decision_tree.py
+   python train_decision_tree.py 4 \'information_gain\'
+
+  The generated script will train once the Learner on the training
+  set, compute training, validation and test set errors and append the
+  results to the results file, along with the values of the hyper-parameters.
+  
+  Early stopping can also be used to set the value of one
+  hyper-parameter.  Argument ``EARLY_STOPPING`` determines which
+  hyper-parameter is set this way.  ``BEG`` is the starting value of
+  that hyper-parameter, ``END`` is the last value, ``INCR`` is the
+  increment and ``LOOK_AHEAD`` is maximum number of consecutive
+  iterations during which the validation set error is allowed to not
+  improve without stopping. For Learner's with more than one cost,
+  argument ``EARLY_STOPPING_COST_ID`` can be used to specify which
+  cost (default=0).
+  
+  Here is an example: ::
+
+   create_experiment_script TASK=classification DATASET=dna MODULE=mlpython.learners.classification LEARNER=NNet RESULTS=results_file.txt EARLY_STOPPING =n_stages BEG=1 INCR=1 END=500 LOOK_AHEAD=10 seed > train_early_stopping.py
+   python train_early_stopping.py 1234
+
+  Finally, a k-fold cross-validation script can be generated using the
+  argument ``KFOLD``. Simply set it to the desired number of folds.
+  Then, the generated script will require that the fold index be
+  specified first, before the hyper-parameers values. When run, this
+  script will write its results in a specific file for that fold
+  (essentially, it's the specified results file in which the fold
+  index has been inserted, right before the file extension).
+
+  Here is an example: ::
+
+   create_experiment_script TASK=classification DATASET=dna MODULE=mlpython.learners.third_party.milk.classification LEARNER=TreeClassifier RESULTS=results_file.txt KFOLD=5 min_split > train_fold.py
+   python train_fold.py 2 10
+
+* ``mlpython_helper``: This script shows all datasets and learners
+  that MLPython supports. It can also give information specific to a
+  given dataset or learner. Hence, it is particularly useful for
+  finding the information needed by the ``create_experiment_script``
+  script. 
+
+  To know all the available datasets in MLPtyhon, use argument
+  ``-datasets`` as follows: ::
+
+   $ mlpython_helper -datasets
+   TASK = distribution
+          -heart
+          -dna
+          -web
+          -binarized_mnist
+          -connect4
+          -rcv1
+          -mushrooms
+          -adult
+          -nips
+          -mnist
+          -ocr_letters
+
+   TASK = classification
+          -heart
+          -dna
+          -web
+          -connect4
+          -rcv1
+          -mushrooms
+          -adult
+          -newsgroups
+          -mnist
+          -ocr_letters
+
+   TASK = multilabel
+          -yeast
+          -corrupted_mnist
+          -medical
+          -mediamill
+          -mturk
+          -scene
+          -corrupted_ocr_letters
+          -bibtex
+          -occluded_mnist
+          -corel5k
+          -majmin
+
+   TASK = multiregression
+          -face_completion_lfw
+          -sarcos
+          -occluded_faces_lfw
+
+  (the list above is probably not up-to-date and is constantly growing)
+
+  The know more about a specific dataset, simply specify its name in the command line, as follows: ::
+
+   $ mlpython_helper -datasets -download dna
+
+   Module ``datasets.dna`` gives access to the DNA dataset.
+
+   | **Reference:** 
+   | Tractable Multivariate Binary Density Estimation and the Restricted Boltzmann Forest
+   | Larochelle, Bengio and Turian
+   | http://www.cs.toronto.edu/~larocheh/publications/NECO-10-09-1100R2-PDF.pdf
+
+  Of course, to use any of the datasets supported by MLPython, it must
+  first have been downloaded, and ``mlpython_helper`` can be used for
+  that.  Simpy add the argument ``-download`` to the command, as follows: ::
+
+   mlpython_helper -datasets -download dna
+
+  To know which Learners are available in MLPython, use argument ``-learners`` alone instead, as follows: ::
+
+   $ mlpython_helper -learners
+   MODULE: mlpython.learners.multilabel
+              -MultilabelCRF
+   MODULE: mlpython.learners.features
+              -RBM
+              -PCA
+   MODULE: mlpython.learners.distribution
+              -Bagdistribution
+              -NADE
+              -FVSBN
+   MODULE: mlpython.learners.generic
+              -Learner
+              -OnlineLearner
+   MODULE: mlpython.learners.classification
+              -NNet
+              -BayesClassifier
+   MODULE: mlpython.learners.ranking
+              -RankingFromClassifier
+   MODULE: mlpython.learners.dynamic
+              -LinearDynamicalSystem
+              -SparseLinearDynamicalSystem
+   MODULE: mlpython.learners.third_party.libsvm.classification
+              -SVMClassifier
+   MODULE: mlpython.learners.third_party.gpu.distribution
+              -RestrictedBoltzmannMachine
+   MODULE: mlpython.learners.third_party.gpu.classification 
+              -ClassificationRestrictedBoltzmannMachine
+   MODULE: mlpython.learners.third_party.milk.classification
+              -TreeClassifier
+   MODULE: mlpython.learners.sparse.classification
+              -MultinomialNaiveBayesClassifier
+
+  Then, to get the information specific to some Learner class, add the
+  Learner class name to the command line, as follows: ::
+
+   $ mlpython_helper -learners BayesClassifier
+
+   MODULE: mlpython.learners.classification
+   Docstring: BayesClassifier
+
+      Bayes classifier from distribution estimators
+
+      Given one distribution learner per class (option ``estimators``), this
+      learner will train each one on a separate class and classify
+      examples using Bayes' rule.
+
+      **Required metadata:**
+
+      * ``'targets'``
+
+  Note that several Learners might have the same class name (for
+  instance there might be a different ``RandomForest`` Learner in a
+  classification and a regression package).
+
+* ``launch_jobs``: This script can be used to launch several jobs in
+  parallel on a set of machines. The usage of this script is: ::
+
+   Usage: launch_jobs batch_name machines job_desc'
+   
+  The ``batch_name`` argument is the name designating the batch of
+  jobs.  The ``machines`` argument is a string determining both the
+  machines on which to launch jobs and maximum number of jobs to run
+  on each. It should have the following format: ::
+
+    machine1:maxjobs1,machine2:maxjobs2,...
+
+  This script assumes that you can connect to those machines via ssh
+  (without having to enter a password) and that the current directory
+  is also mounted on those machines.
+
+  If the machine name is "localhost", then the jobs will be launched
+  locally on the machine. 
+
+  Finally, the ``job_desc`` argument is a string describing the jobs
+  to launch. It should describe what command to run and which argument
+  (i.e. hyper-parameters) for that script to try. For instance, if
+  "job_desc" was 'program {val1,val2} {val3,val4}', then the following
+  jobs would be launched: ::
+
+    program val1 val3
+    program val1 val4
+    program val2 val3
+    program val2 val4
+
+  If the total number of jobs is greater than the total maximum number of
+  jobs allowed by ``machines``, then the remaining jobs will be launched
+  as soon as earlier ones finish.
+
+  The standard output from each of those commands will be put in seperate files
+  in a directory named ``batch_name``. 
+
+  Going back to our previous example, ``launch_jobs`` could be used to
+  run the script ``train_nnet.py`` with many different settings of
+  hyper-parameters, to perform model selection: ::
+
+   launch_jobs train localhost:4 'python train_nnet.py {5,10,15} {0.1,0.01}'   
+
+  All results will be appended in file ``results_file.txt``, which was
+  specified when ``create_experiment_script`` was called.
+
+* ``print_ascii_table``: This script takes a text file in which each
+  line provides details for a single experiment (values of
+  hyper-parameters, results on training/validation/test sets) and
+  prints it out with nicely aligned columns, to facilitate
+  viewing. Each row should be segmented into columns, separated by the
+  tab character '\\t'. The script also assumes that the first line of
+  the text file is a header file. The experiment scripts generated by
+  ``create_experiment_script`` use this format to create their results
+  file.
+
+  Argument ``-sort_column`` also allows to sort the lines of the
+  results file based on the numerical value of a given column. By
+  default, ``print_ascii_table`` will ignore the first line (the
+  header line) when sorting. However, for a text file with a different
+  number of header lines (or none), it is possible to specify the
+  number of header lines with the ``-header`` argument. 
+
+  Here is the usage information for this script: ::
+
+   Usage: print_ascii_table [-sort_column int [-header int]] file
+
+  Continuing our previous example, we can look at the results in ``results_file.txt``
+  by running: ::
+
+   print_ascii_table -sort_column 4 results_file.txt
+
+  which will output something like this: ::
+
+         #1             #2               #3               #4               #5                #6              #7               #8
+   n_stages  learning_rate           train1           valid1            test1            train2          valid2            test2
+         10           0.01            0.025             0.05  0.0682967959528    0.107709905187  0.167955635734   0.183754376553
+         15           0.01            0.015            0.055  0.0623946037099   0.0725064139118    0.1623502906   0.176613253765
+          5            0.1  0.0114285714286             0.06   0.066610455312   0.0443683558712   0.21432287231   0.213970324331
+         15            0.1              0.0  0.0633333333333   0.066610455312  0.00260086090047  0.300671979265   0.310530526339
+         10            0.1              0.0            0.065   0.066610455312  0.00641540222754  0.276963867247   0.280530205896
+          5           0.01  0.0571428571429             0.07  0.0843170320405    0.266068273165  0.302398354453   0.310701156217
+
+  Because ``NNet`` outputs two errors (the classification error and
+  the class negative log-likelihood), the results file contains two
+  sets of columns: ``train1``, ``valid1`` and ``test1`` for the
+  average classification errors on the training, validation and test
+  sets, and similarly ``train2``, ``valid2`` and ``test2`` for the
+  average class negative log-likelihood on the same sets.
+   
+
+Before you leave
+----------------
+
+This tutorial gives only a shallow tour of MLPython. Hence, I suggest
+taking a quick look at the :ref:`library`, in order to get a better
+view of the different datasets, Learners and tools available within
+MLPython.

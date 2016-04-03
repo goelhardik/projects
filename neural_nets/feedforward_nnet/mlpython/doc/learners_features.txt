@@ -1,0 +1,8 @@
+.. _learners_features:
+
+Feature Learners
+================
+
+.. automodule:: learners.features
+   :members:
+

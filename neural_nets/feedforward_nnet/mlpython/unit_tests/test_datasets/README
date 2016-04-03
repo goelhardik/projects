@@ -1,0 +1,22 @@
+To add unittest for a downlodable dataset, there is 2 parts. 
+See the last part if the dataset you wnat to add test for is not downloadable.
+
+1. Create a pickle file using the pickclegenerator.py that is located in mlpython/scripts/
+    - The dataset must be in the dataset repository (environment variable) for the script to work.
+    - The script must be run from the mlpython repository (so the pkl file will be place at the right spot)
+
+    Use command (from mlpython directory)
+    python ./scripts/picklegenerator.py DATASETNAME
+
+
+2. Generate the test class with generatorPythonUnitTest.py that is located in mlpython/unit_tests/test_datasets/
+
+- The script must be run from the mlpython repository (test file will be place at the right spot)
+
+Use command
+python ./unit_tests/test_datasets/generatorPythonUnitTest.py DATASETNAME
+
+
+
+If the Dataset is not downloadable, you can still run the same command for the pickclegenerator
+    For the generatorPythonUnitTest you will need to edit it so it won't try to download it and won't delete it after the test.

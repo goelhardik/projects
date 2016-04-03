@@ -1,0 +1,16 @@
+.. _mlproblems:
+
+MLProblems
+==========
+
+.. automodule:: mlproblems
+   :members:
+
+Follow the links below to learn more about these modules:
+
+.. toctree::
+   :maxdepth: 2
+
+   mlproblems_generic
+   mlproblems_classification
+   mlproblems_ranking

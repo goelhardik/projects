@@ -1,0 +1,15 @@
+.. _misc:
+
+Misc
+====================================
+
+.. automodule:: misc
+   :members:
+
+Follow the links below to learn more about these modules:
+
+.. toctree::
+   :maxdepth: 2
+
+   misc_io
+   misc_visualize

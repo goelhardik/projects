@@ -1,0 +1,144 @@
+#! /usr/bin/env python
+
+# Copyright 2011 Hugo Larochelle. All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+# 
+#    1. Redistributions of source code must retain the above copyright notice, this list of
+#       conditions and the following disclaimer.
+# 
+#    2. Redistributions in binary form must reproduce the above copyright notice, this list
+#       of conditions and the following disclaimer in the documentation and/or other materials
+#       provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY Hugo Larochelle ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+# FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL Hugo Larochelle OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# The views and conclusions contained in the software and documentation are those of the
+# authors and should not be interpreted as representing official policies, either expressed
+# or implied, of Hugo Larochelle.
+
+
+import sys,os, re
+
+def representsInt(s):
+    return re.match(r"[-+]?\d+$", s) is not None
+
+
+def representsFloat(s):
+    return re.match("^\d+?\.\d+?$", s) is not None
+   
+    
+def format_line(line,max_lengths):
+    tokens = line.rstrip('\n').split('\t')
+    tokens = [' '*(max_lengths[i] - len(tokens[i])) + tokens[i] for i in range(len(tokens))]
+    return '  '.join(tokens)
+
+
+msg = """Usage: print_ascii_table [-sort_column int [-header int]] file
+
+This is a simple script for printing result tables into nicely aligned columns.
+The columns in the file are assumed to be separated by tabs ('\\t').
+
+You can use -sort_column to sort data on one column and -header to remove a
+number of lines that will not be sorted.
+
+"""
+
+sort_column = False
+header = False
+arguments = sys.argv
+
+if len(arguments) <= 1:
+    print msg
+    sys.exit()
+
+if len(arguments) >= 7:
+    print msg
+    sys.exit()
+    
+# Check for argument -sort_column
+for index, item in enumerate(arguments):
+    if item == '-sort_column':
+        if representsInt(arguments[index + 1]) == True:
+            sort_column = True
+            sort_column_number = int(arguments[index + 1])
+            
+            # Check for argument -header
+            number_of_header_to_skip = 1    # 1 by default, even if -header is not declared
+            for index, item in enumerate(arguments):
+                if item == '-header':
+                    if representsInt(arguments[index + 1]) == True:
+                        header = True
+                        number_of_header_to_skip = int(arguments[index + 1])
+                    else:
+                        print msg
+                        sys.exit()                 
+        else:
+            print msg
+            sys.exit()
+
+
+file = sys.argv[len(sys.argv) - 1]
+stream = open(os.path.expanduser(file))
+
+lines = [ line for line in stream]
+
+# figure out the length of all elements in the table
+all_lengths = [ [ len(elem) for elem in line.split('\t') ] for line in lines]
+
+# figure max length in each column
+max_lengths = [ max([ lengths[i] for lengths in all_lengths ]) for i in range(len(all_lengths[0]))]
+
+col_numbers = '\t'.join([ '#' + str(i) for i in range(1, len(max_lengths) + 1) ]) + '\n'
+
+# If sorted by column number
+if sort_column == True: 
+    lines_tuple = []
+    # Create tuple containing line item
+    for line in lines:
+        lines_tuple.append(line[:-1].split('\t'))
+
+    # Remove a number of header line(s) and keep them to add them later
+    ctr = 0
+    headerLines = []
+    for n in range(0, number_of_header_to_skip):
+        headerLines.append(lines[ctr])
+        lines_tuple.pop(0)
+        ctr = ctr + 1
+      
+    # Sort tuples on the designated column number
+    try:
+       lines_tuple = sorted(lines_tuple, key=lambda myKey: float(myKey[sort_column_number - 1]))
+    except Exception as inst:
+        print "Error: either the column for sorting is not valid or it contains non-numerical values."
+        sys.exit()
+        
+    # Add the header line to lines or else clear it
+    lines = headerLines
+
+    # Addend sorted items in lines
+    for line in lines_tuple:
+        lineToAdd = ""
+        for index, lineItem in enumerate(line):
+            if ((index + 1) < len(line)): # If not the last
+                lineToAdd += str(lineItem) + '\t'
+            else:
+                lineToAdd += str(lineItem) # The last
+            
+        lines.append(lineToAdd)
+
+
+print format_line(col_numbers, max_lengths)
+        
+for line in lines:
+    print format_line(line, max_lengths)
+

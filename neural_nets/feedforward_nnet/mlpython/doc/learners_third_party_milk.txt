@@ -1,0 +1,13 @@
+.. _learners_third_party_milk:
+
+Milk Learners
+=============
+
+.. automodule:: learners.third_party.milk
+   :members:
+
+Milk Classifiers
+----------------
+
+.. automodule:: learners.third_party.milk.classification
+   :members:

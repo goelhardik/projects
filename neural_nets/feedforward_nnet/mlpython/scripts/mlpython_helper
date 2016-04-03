@@ -1,0 +1,204 @@
+#! /usr/bin/env python
+
+# Copyright 2011 David Brouillard & Guillaume Roy-Fontaine. All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+# 
+#    1. Redistributions of source code must retain the above copyright notice, this list of
+#       conditions and the following disclaimer.
+# 
+#    2. Redistributions in binary form must reproduce the above copyright notice, this list
+#       of conditions and the following disclaimer in the documentation and/or other materials
+#       provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY David Brouillard & Guillaume Roy-Fontaine ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+# FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL David Brouillard & Guillaume Roy-Fontaine OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# The views and conclusions contained in the software and documentation are those of the
+# authors and should not be interpreted as representing official policies, either expressed
+# or implied, of David Brouillard & Guillaume Roy-Fontaine.
+
+
+import os
+import inspect
+import sys
+import re
+import warnings
+import mlpython
+
+modes = ["-datasets", "-learners"] # parameters of the scripts
+datasetsMode = ["-download", "-delete"]
+usageString = 'Usage:\n     mlpython_helper -datasets [[-download |-delete] dataset] or\n     mlpython_helper -learners [object]'
+
+def VerifyMode():    
+    arguments = sys.argv
+    arguments.pop(0);   # Remove first argument
+    
+    if len(arguments) >= 1:
+        if arguments[0] == modes[0]:
+            VerifyDatasetsMode(arguments)
+        elif arguments[0] == modes[1]:
+            VerifyLearnersMode(arguments)
+        else:
+            print usageString
+    else:
+        print usageString
+        
+
+def VerifyDatasetsMode(args):    
+    if len(args) == 1:
+        ShowDatasets()
+    elif len(args) == 2:
+        ShowDatasetDocstring(args[1])
+    elif len(args) == 3:
+        if args[1] == datasetsMode[0]:
+            DownloadDataset(args[2])
+        elif args[1] == datasetsMode[1]:
+            DeleteDataset(args[2])
+        else:
+            print usageString
+    elif len(args) >= 4:
+        print usageString
+
+ 
+def VerifyLearnersMode(args):
+    if len(args) == 1:
+        ShowLearners()
+    elif len(args) == 2:
+        ShowClassDocstring(args[1])
+    elif len(args) >= 3:
+        print 'Usage:\n     mlpython_helper -datasets [dataset] or\n     mlpython_helper -learners [object]'
+        
+  
+def DownloadDataset(args):
+    import mlpython.datasets.store as dataset_store
+    
+    try:
+       dataset_store.download(args) 
+    except Exception as inst:
+        print inst
+
+def DeleteDataset(args):
+    import mlpython.datasets.store as dataset_store
+    
+    try:
+       dataset_store.delete(args) 
+    except Exception as inst:
+        print inst  
+    
+def ShowDatasets():
+    import mlpython.datasets.store as datasets_store
+
+    print 'TASK = distribution'
+    for item in sorted(list(datasets_store.distribution_names)):
+        print '        -' + item
+
+    print '\nTASK = classification'
+    for item in sorted(list(datasets_store.classification_names)):
+        print '        -' + item
+
+    print '\nTASK = regression'
+    for item in sorted(list(datasets_store.regression_names)):
+        print '        -' + item
+        
+    print '\nTASK = multilabel'
+    for item in sorted(list(datasets_store.multilabel_names)):
+        print '        -' + item
+        
+    print '\nTASK = multiregression'
+    for item in sorted(list(datasets_store.multiregression_names)):
+        print '        -' + item
+
+    print '\nTASK = ranking'
+    for item in sorted(list(datasets_store.ranking_names)):
+        print '        -' + item
+
+def ShowLearners():
+    filePath = mlpython.__path__[0] + "/learners"
+
+    from mlpython.learners.generic import Learner
+    for (path, dirs, files) in os.walk(filePath):
+        for item in files:
+            if item.find("__init__") == -1:
+                match = re.search(r'py$', item)
+                if match: # If-statement after search() tests if it succeeded                   
+                    moduleLocalPath = path[path.rfind("/learners") + 1:len(path)] + '/' + item
+                    modulePath = path + "/" + item
+
+                    # Figuring out module from file name
+                    module_import_str = moduleLocalPath.replace('/','.')
+                    module_import_str = module_import_str[:module_import_str.rfind('.py')]
+
+                    try:
+                        exec 'import mlpython.' + module_import_str + ' as m'
+                        found_one_learner = False
+                        d = vars(m)
+                        for x,y in d.items():
+                            if inspect.isclass(y):
+                                if issubclass(y,Learner) and y.__module__ == 'mlpython.'+module_import_str:
+                                    if not found_one_learner:
+                                        print 'MODULE: mlpython.' + module_import_str
+                                        found_one_learner = True
+                                    print '            -' + x
+                    except Exception as inst:
+                        pass
+
+            
+def ShowDatasetDocstring(dataset):
+    datasetFilePath = mlpython.__path__[0] + "/datasets/" + dataset + ".py"
+    
+    try:
+        exec 'import mlpython.datasets.' + dataset
+        exec 'print mlpython.datasets.' + dataset + '.__doc__'
+    except:
+        print 'Dataset \'' + dataset + '\' do not exist.'
+        
+        
+def ShowClassDocstring(varClass):    
+    filePath = mlpython.__path__[0] + "/learners"
+    isFound = False
+    for (path, dirs, files) in os.walk(filePath):
+        for item in files: # We do not want .pyc, __init__ and README files
+            match = re.search(r'py$', item)
+            if match:
+                # Figuring out module from file name
+                module_import_str = path[path.find("/learners") + 1:len(path)] + '/' + item
+                module_import_str = module_import_str.replace('/','.')
+                module_import_str = module_import_str[:module_import_str.rfind('.py')]
+
+                try:
+                    classDocstring = GetClassDocstring(module_import_str, varClass)
+                    print '\nMODULE: mlpython.' + module_import_str
+                    print 'Docstring: ' + varClass
+                    print classDocstring
+                    isFound = True
+                except:
+                    pass
+
+    if not isFound:
+        print 'Learner \'' + varClass + '\' do not exist'
+
+
+def GetClassDocstring(module_import_str, classs):
+    exec 'import mlpython.' + module_import_str
+    exec 'docstring = mlpython.' + module_import_str + '.' + classs + '.__doc__'
+
+    return docstring
+    
+    
+# MAIN CODE
+with warnings.catch_warnings(record=True) as w:
+    #warnings.simplefilter("ignore") # never print matching warnings
+    #warnings.simplefilter("always")  # always print matching warnings
+    warnings.simplefilter("error")  # turn matching warnings into exceptions
+    
+    VerifyMode()
+

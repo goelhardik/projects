@@ -1,0 +1,8 @@
+.. _learners_generic:
+
+Generic Learners
+================
+
+.. automodule:: learners.generic
+   :members:
+

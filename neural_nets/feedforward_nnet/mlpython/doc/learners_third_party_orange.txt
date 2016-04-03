@@ -1,0 +1,13 @@
+.. _learners_third_party_orange:
+
+Orange Learners
+===============
+
+.. automodule:: learners.third_party.orange
+   :members:
+
+Orange Classifiers
+------------------
+
+.. automodule:: learners.third_party.orange.classification
+   :members:

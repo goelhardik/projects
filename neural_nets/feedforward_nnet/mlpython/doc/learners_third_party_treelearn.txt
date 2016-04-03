@@ -1,0 +1,13 @@
+.. _learners_third_party_treelearn:
+
+TreeLearn Learners
+==================
+
+.. automodule:: learners.third_party.treelearn
+   :members:
+
+TreeLearn Classifiers
+---------------------
+
+.. automodule:: learners.third_party.treelearn.classification
+   :members:

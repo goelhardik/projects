@@ -1,0 +1,1 @@
+This package contains unit tests for the main functionnalities of MLPython. Before adding stuff to the library, you should always make sure that all tests succeed.

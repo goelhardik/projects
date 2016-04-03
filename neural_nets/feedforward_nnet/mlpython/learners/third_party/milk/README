@@ -1,0 +1,13 @@
+The package ``learners.third_party.milk`` contains modules for learning
+algorithms using the Milk library. These modules all require that the
+Milk library be installed.
+
+To use milk through mlpython, do the following:
+
+1. download milk from here: http://pypi.python.org/pypi/milk/#downloads
+2. install milk (instructions from Milk's INSTALL.rst)
+   The following should work: 
+      python setup.py install
+3. **IMPORTANT** When importing milk for the first time, make sure not to be in its directory.
+
+And that should do it! Try 'import milk' to see if your installation is working.

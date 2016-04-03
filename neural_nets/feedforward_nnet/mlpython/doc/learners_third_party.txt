@@ -1,0 +1,17 @@
+.. _learners_third_party:
+
+Third-party Learners
+====================
+
+.. automodule:: learners.third_party
+   :members:
+
+Follow the links below to learn more about these subpackages:
+
+.. toctree::
+   :maxdepth: 2
+
+   learners_third_party_libsvm
+   learners_third_party_milk
+   learners_third_party_treelearn
+   learners_third_party_orange

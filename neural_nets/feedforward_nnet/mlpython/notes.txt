@@ -1,0 +1,41 @@
+TODO:
+
+- add the simple learners (nnet, ranking learners, etc.) that I already have
+- add ranking to datasets.store, with support for Yahoo Ranking Challenge Dataset
+- add support to my icml07 datasets
+- say something about the 'length' trick. Try to figure out a nice procedure for doing this...
+- when documentation is done:
+   * ispell
+   * find places where examples in the form of code snippets could be added
+   * add cross-references where appropriate
+- figure out a way to allow for having compiled mathutils for different platforms at the same time
+- dynamic module should be sequential, and should be a directory (for unsup. and sup. sequential problems)
+- might want to consider adding a 'n_fields' option. See "has_single_field" option of MinibatchProblem to understand why...
+- change calls to zip() to itertools.izip(), which doesn't output a list but instead outputs an iterator
+- once the documentation is done, should go back and add some cross references
+- add useful links to documnetation for ml in python, in general
+  * profiling, e.g. http://packages.python.org/line_profiler/
+  * C programming within Numpy
+  * Python speed performance tips: http://wiki.python.org/moin/PythonSpeed/PerformanceTips#Avoidingdots...
+- figure out get_problem(), for Toronto face dataset (see code!), yahoo_ltrc, 
+  mnist, icml2007, and more...
+- add tools for generating/viewing results (k-fold, early-stopping, save results, viewing results in tables or plots)
+- figure out a way of having test suites
+- for datasets:
+  * might want to make sure that the dtype of the data is the same when it is read from the file and
+    and when it is in memory
+  * could add support for extra arguments using **kwargs, which can be used to pass arbitrary keywords.
+    This could have some unwanted effect, so perhaps I would need to be careful. Here's an example of how
+    useful this can be (see http://www.saltycrane.com/blog/2008/01/how-to-use-args-and-kwargs-in-python/ for more):
+
+     >>> def f(x,**kwargs):
+     ...    return g(x,**kwargs)
+     ... 
+     >>> def g(x,blu=0,bla=0):
+     ...    return x+blu+bla/2.
+     ... 
+     >>> f(1,blu=10,bla=20)
+     21.0
+     >>> f(1,bla=10,blu=20)
+     26.0
+

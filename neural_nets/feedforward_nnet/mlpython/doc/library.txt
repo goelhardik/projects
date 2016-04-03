@@ -1,0 +1,16 @@
+.. _library:
+
+Library Documentation
+=====================
+
+Here is MLPython's documentation, extracted directly from the source code docstrings.
+
+.. toctree::
+   :maxdepth: 0
+
+   datasets
+   mlproblems
+   learners
+   mathutils
+   misc
+

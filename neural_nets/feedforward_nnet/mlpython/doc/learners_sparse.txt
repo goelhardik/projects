@@ -1,0 +1,14 @@
+.. _learners_sparse:
+
+Sparse Learners
+===============
+
+.. automodule:: learners.sparse
+   :members:
+
+Sparse Classification Learners
+------------------------------
+
+.. automodule:: learners.sparse.classification
+   :members:
+

@@ -1,0 +1,15 @@
+.. _mathutils:
+
+Mathutils
+====================================
+
+.. automodule:: mathutils
+   :members:
+
+Follow the links below to learn more about these modules:
+
+.. toctree::
+   :maxdepth: 2
+
+   mathutils_linalg
+   mathutils_nonlinear

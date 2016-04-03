@@ -1,0 +1,434 @@
+#! /usr/bin/env python
+
+# Copyright 2011 David Brouillard & Guillaume Roy-Fontaine. All rights reserved.
+# 
+# Redistribution and use in source and binary forms, with or without modification, are
+# permitted provided that the following conditions are met:
+# 
+#    1. Redistributions of source code must retain the above copyright notice, this list of
+#       conditions and the following disclaimer.
+# 
+#    2. Redistributions in binary form must reproduce the above copyright notice, this list
+#       of conditions and the following disclaimer in the documentation and/or other materials
+#       provided with the distribution.
+# 
+# THIS SOFTWARE IS PROVIDED BY David Brouillard & Guillaume Roy-Fontaine ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+# FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL David Brouillard & Guillaume Roy-Fontaine OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+# ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# 
+# The views and conclusions contained in the software and documentation are those of the
+# authors and should not be interpreted as representing official policies, either expressed
+# or implied, of David Brouillard & Guillaume Roy-Fontaine.
+
+
+import os
+import sys
+from string import Template
+
+if (len(sys.argv) >= 6):    
+    arguments = sys.argv
+    arguments.pop(0);	# Remove first argument
+
+    # Parsing Keywords
+    splitedArguments = []
+    options = []
+    for item in arguments:
+        if item.find('=') == -1:
+            options.append(item) # Option(s)
+        else:
+            splitedArguments.append(item.partition('=')) # Main's parameters with '=' in it
+    
+	dict_Arguments = {} # Create a dictionary that will be used to substitute the template
+	for item in splitedArguments:
+		dict_Arguments[item[0]] = item[2]
+
+    # Verify if all the required param are provived
+    requiredParam = 0
+    raiseRequiredError = 0
+    if 'TASK' in dict_Arguments:
+        requiredParam += 1
+    else:
+        raiseRequiredError = 1
+    if 'MODULE' in dict_Arguments:
+        requiredParam += 1
+    else:
+        raiseRequiredError = 1
+    if 'LEARNER' in dict_Arguments:
+        requiredParam += 1
+    else:
+        raiseRequiredError = 1
+    if 'RESULTS' in dict_Arguments:
+        requiredParam += 1
+    else:
+        raiseRequiredError = 1
+    if 'DATASET' in dict_Arguments:
+        requiredParam += 1
+        datasetFromFile = False
+    else:
+        dict_Tasks = {'distribution','classification','regression','multilabel','multiregression'}
+        datasetFromFile = True
+        if 'TRAIN' in dict_Arguments:
+            requiredParam += 1
+        else:
+            raiseRequiredError = 1
+        if 'VALID' in dict_Arguments:
+            requiredParam += 1
+        else:
+            raiseRequiredError = 1
+        if 'TEST' in dict_Arguments:
+            requiredParam += 1
+            if not dict_Arguments['TASK'] in dict_Tasks:
+                raise ValueError('The task \'' + dict_Arguments['TASK'] + '\' is not implemented with the TRAIN, VALID, TEST method.')
+        else:
+            raiseRequiredError = 1
+    if raiseRequiredError == 1:
+        if datasetFromFile == False:
+            raise ValueError('There should be at least 5 parameters required. \'TASK\', \'DATASET\', \'MODULE\', \'LEARNER\' and \'RESULTS\'')
+        else:
+            raise ValueError('There should be at least 7 parameters required. \'TASK\', \'TRAIN\', \'VALID\', \'TEST\', \'MODULE\', \'LEARNER\' and \'RESULTS\'')        
+      
+    # Verify if the param 'EARLY_STOPPING is provided
+    earlyStoppingParam = 0
+    if 'EARLY_STOPPING' in dict_Arguments:
+        # Verify if each of the 'EARLY_STOPPING' param are provided : 'BEG', 'INCR', 'END', 'LOOK_AHEAD'
+        raiseEarlyStoppingError = 0
+        if 'BEG' in dict_Arguments:
+            earlyStoppingParam += 1
+        else:
+            raiseEarlyStoppingError = 1
+        if 'INCR' in dict_Arguments:
+            earlyStoppingParam += 1
+        else:
+            raiseEarlyStoppingError = 1
+        if 'END' in dict_Arguments:
+            earlyStoppingParam += 1
+        else:
+            raiseEarlyStoppingError = 1
+        if 'LOOK_AHEAD' in dict_Arguments:
+            earlyStoppingParam += 1
+        else:
+            raiseEarlyStoppingError = 1
+        if 'EARLY_STOPPING_COST_ID' in dict_Arguments:
+            early_stopping_cost_id = dict_Arguments['EARLY_STOPPING_COST_ID']
+        else:
+            early_stopping_cost_id = 0
+                    
+        if raiseEarlyStoppingError == 1:
+            raise ValueError('There are 4 parameters required with the \'EARLY_STOPPING\' option. \'BEG\', \'INCR\', \'END\', \'LOOK_AHEAD\'')
+
+    # Verify if the param 'KFOLD is provided
+    kfoldParam = 0
+    if 'KFOLD' in dict_Arguments:
+        kfoldParam = 1
+         
+                
+    # Create a string str_RequiredParam that will be used in the child script to generate the header, create a string str_RequiredParamError for errors
+    # and create a list for constructors
+    str_RequiredParam = "\'\'"
+    str_RequiredParamError = ""
+    lst_requiredOption = []
+    if len(options) >= 1:
+        str_RequiredParam = "\'"
+        str_RequiredParamError = ""
+        for item in options:
+            str_RequiredParam += item
+            str_RequiredParam += "\\t"
+            str_RequiredParamError += item
+            str_RequiredParamError += " "
+            lst_requiredOption.append(item)
+    
+        str_RequiredParam += "\'"
+        str_RequiredParamError += ""
+        
+    # Create two strings that will be used in the child script to generate the object constructor and part of the header
+    str_ParamOption = ""
+    str_ParamOptionValue = ""
+    if kfoldParam == 0:
+        for index, item in enumerate(options):
+            str_ParamOption += '"' + item + '=\"' + ' + sys.argv[' + str(index) + ']'
+            str_ParamOptionValue += 'sys.argv[' + str(index) + ']'
+            if ((index+1) < len(options)):
+                str_ParamOption += ' + \", \" + '
+                str_ParamOptionValue += ' + \"\\t\" + '
+    else:
+         for index, item in enumerate(options):
+            str_ParamOption += '"' + item + '=\"' + ' + sys.argv[' + str(index + 1) + ']'
+            str_ParamOptionValue += 'sys.argv[' + str(index + 1) + ']'
+            if ((index+1) < len(options)):
+                str_ParamOption += ' + \", \" + '
+                str_ParamOptionValue += ' + \"\\t\" + '       
+            
+    # Substitute dictionary's keywords in the template
+    result = 'import numpy as np\n'
+    result += 'import os\n'
+    result += 'import sys\n'
+    result += 'import fcntl\n'
+    result += 'import copy\n'
+    result += 'from string import Template\n'
+    result += 'import mlpython.datasets.store as dataset_store\n'
+    result += Template('from $MODULE import ${LEARNER}\n\n').safe_substitute(dict_Arguments)
+    result += 'sys.argv.pop(0);	# Remove first argument\n\n'
+
+    if len(options) > 0:
+        result += '# Check if every option(s) from parent\'s script are here.\n'
+        
+        if kfoldParam == 0:
+            result += 'if ' + str(len(options)) + ' != len(sys.argv):\n'
+            result += '    print "Usage: python script.py ' + str_RequiredParamError + '"\n'
+        else:
+            result += 'if ' + str(len(options) + 1) + ' != len(sys.argv):\n' 
+            result += '    print "Usage: python script.py fold ' + str_RequiredParamError + '"\n'
+        result += '    sys.exit()\n\n'
+
+        result += '# Set the constructor\n'
+        result += 'str_ParamOption = ' + str_ParamOption + '\n'
+        result += 'str_ParamOptionValue = ' + str_ParamOptionValue + '\n'
+        
+        result += 'try:\n'
+        if earlyStoppingParam == 4: # Early_Stopping
+            result += Template('    objectString = \'myObject = ${LEARNER}(${EARLY_STOPPING}=${BEG},\' + str_ParamOption + \')\'\n').safe_substitute(dict_Arguments)
+        else:
+            result += Template('    objectString = \'myObject = ${LEARNER}(\' + str_ParamOption + \')\'\n').safe_substitute(dict_Arguments)
+        result += '    code = compile(objectString, \'<string>\', \'exec\')\n'
+        result += '    exec code\n'
+        result += 'except Exception as inst:\n'
+        result += Template('    print "Error while instantiating ${LEARNER} (required hyper-parameters are probably missing)"\n').safe_substitute(dict_Arguments)
+        result += '    print inst\n'
+    else:
+        result += 'str_ParamOptionValue = ""\n'
+        result += 'try:\n'
+        if earlyStoppingParam == 4: # Early_Stopping
+            result += Template('    myObject = ${LEARNER}(${EARLY_STOPPING}=${BEG})\n\n').safe_substitute(dict_Arguments)
+        else:
+            result += Template('    myObject = ${LEARNER}()\n\n').safe_substitute(dict_Arguments)
+        result += 'except Exception as inst:\n'
+        result += Template('    print "Error while instantiating ${LEARNER} (required hyper-parameters are probably missing)"\n').safe_substitute(dict_Arguments)
+        result += '    print inst\n'
+        result += '    sys.exit()\n'
+    
+    
+    if datasetFromFile == True:
+        result += "\n"
+        result += "import mlpython.misc.io as mlpython_io\n"
+        if dict_Arguments['TASK'] == 'classification': # Classification
+            result += "print \"Loading train data from " + dict_Arguments['TRAIN'] + "\"\n"
+            result += "trainData = mlpython_io.libsvm_load('" + dict_Arguments['TRAIN'] + "')\n"
+            result += "input_size = trainData[1]['input_size']\n"
+            result += "print \"Loading test data from " + dict_Arguments['TEST'] + "\"\n"
+            result += "testData = mlpython_io.libsvm_load('" + dict_Arguments['TEST'] + "',input_size=input_size)\n"
+            result += "print \"Loading valid data from " + dict_Arguments['VALID'] + "\"\n"
+            result += "validData = mlpython_io.libsvm_load('" + dict_Arguments['VALID'] + "',input_size=input_size)\n\n"
+            result += "import mlpython.mlproblems.classification as classificationProblem\n"
+            result += "trainset = classificationProblem.ClassificationProblem(trainData[0], trainData[1])\n"
+            result += "validset = trainset.apply_on(validData[0], validData[1])\n"
+            result += "testset = trainset.apply_on(testData[0], testData[1])\n\n"
+        elif dict_Arguments['TASK'] == 'distribution': # distribution
+            result += "print \"Loading train data from " + dict_Arguments['TRAIN'] + "\"\n"
+            result += "trainData = mlpython_io.libsvm_load('" + dict_Arguments['TRAIN'] + "')\n"
+            result += "input_size = trainData[1]['input_size']\n"
+            result += "print \"Loading test data from " + dict_Arguments['TEST'] + "\"\n"
+            result += "testData = mlpython_io.libsvm_load('" + dict_Arguments['TEST'] + "',input_size=input_size)\n"
+            result += "print \"Loading valid data from " + dict_Arguments['VALID'] + "\"\n"
+            result += "validData = mlpython_io.libsvm_load('" + dict_Arguments['VALID'] + "',input_size=input_size)\n\n"
+            result += "import mlpython.mlproblems.generic as distributionProblem\n"
+            result += "trainset = distributionProblem.SubsetFieldsProblem(trainData[0], trainData[1])\n"
+            result += "validset = trainset.apply_on(validData[0], validData[1])\n"
+            result += "testset = trainset.apply_on(testData[0], testData[1])\n\n"               
+        elif dict_Arguments['TASK'] == 'regression': # Regression
+            result += "print \"Loading train data from " + dict_Arguments['TRAIN'] + "\"\n"
+            result += "trainData = mlpython_io.libsvm_load('" + dict_Arguments['TRAIN'] + "', convert_target=float, compute_targets_metadata=False)\n"
+            result += "input_size = trainData[1]['input_size']\n"
+            result += "print \"Loading test data from " + dict_Arguments['TEST'] + "\"\n"
+            result += "testData = mlpython_io.libsvm_load('" + dict_Arguments['TEST'] + "', convert_target=float,input_size=input_size,compute_targets_metadata=False)\n"
+            result += "print \"Loading valid data from " + dict_Arguments['VALID'] + "\"\n"
+            result += "validData = mlpython_io.libsvm_load('" + dict_Arguments['VALID'] + "', convert_target=float,input_size=input_size,compute_targets_metadata=False)\n\n"
+            result += "import mlpython.mlproblems.generic as regressionProblem    \n"
+            result += "trainset = regressionProblem.MLProblem(trainData[0], trainData[1])\n"
+            result += "validset = trainset.apply_on(validData[0], validData[1])\n"
+            result += "testset = trainset.apply_on(testData[0], testData[1])\n\n"   
+        elif dict_Arguments['TASK'] == 'multilabel': # Multilabel
+            # Code to get the target_size of the file
+            myfile = open(dict_Arguments['TRAIN'])
+            highest_target = 0
+            for line in myfile:
+                line = line.split(' ')[0].split(',')
+                temp_target = max([ int(i) for i in line ])
+                if temp_target > highest_target:
+                    highest_target = temp_target
+            myfile.close()
+            result += "target_size = " + str(highest_target + 1) + "\n"
+            result += "def convert_target(target_str):\n"
+            result += "    targets = np.zeros((target_size))\n"
+            result += "    if target_str != '':\n"
+            result += "        for l in target_str.split(','):\n"
+            result += "            id = int(l)\n"
+            result += "            targets[id] = 1\n"
+            result += "    return targets\n\n"
+            result += "print \"Loading train data from " + dict_Arguments['TRAIN'] + "\"\n"
+            result += "trainData = mlpython_io.libsvm_load('" + dict_Arguments['TRAIN'] + "',convert_target=convert_target,compute_targets_metadata=False)\n"
+            result += "input_size = trainData[1]['input_size']\n"
+            result += "print \"Loading test data from " + dict_Arguments['TEST'] + "\"\n"
+            result += "testData = mlpython_io.libsvm_load('" + dict_Arguments['TEST'] + "',convert_target=convert_target,input_size=input_size,compute_targets_metadata=False)\n"
+            result += "print \"Loading valid data from " + dict_Arguments['VALID'] + "\"\n"
+            result += "validData = mlpython_io.libsvm_load('" + dict_Arguments['VALID'] + "',convert_target=convert_target,input_size=input_size,compute_targets_metadata=False)\n\n"
+            result += "import mlpython.mlproblems.generic as multilabelProblem    \n"
+            result += "trainData[1]['target_size'] = target_size\n"
+            result += "validData[1]['target_size'] = target_size\n"
+            result += "testData[1]['target_size'] = target_size\n"
+            result += "trainset = multilabelProblem.MLProblem(trainData[0], trainData[1])\n"
+            result += "trainset.metadata['target_size'] = target_size\n"
+            result += "validset = trainset.apply_on(validData[0], validData[1])\n"
+            result += "validset.metadata['target_size'] = target_size\n"
+            result += "testset = trainset.apply_on(testData[0], testData[1])\n\n"
+            result += "testset.metadata['target_size'] = target_size\n"
+        elif dict_Arguments['TASK'] == 'multiregression': # Multiregression
+            myfile = open(dict_Arguments['TRAIN'])
+            target_size = len(myfile.readline().split(' ')[0].split(','))
+            myfile.close()
+            result += "target_size = " + str(target_size) + "\n"
+            result += "def convert_target(target_str):\n"
+            result += "    targets = np.array([ float(t) for t in target_str.split(',')])\n"
+            result += "    return targets\n\n"
+            result += "print \"Loading train data from " + dict_Arguments['TRAIN'] + "\"\n"
+            result += "trainData = mlpython_io.libsvm_load('" + dict_Arguments['TRAIN'] + "',convert_target=convert_target,compute_targets_metadata=False)\n"
+            result += "input_size = trainData[1]['input_size']\n"
+            result += "print \"Loading test data from " + dict_Arguments['TEST'] + "\"\n"
+            result += "testData = mlpython_io.libsvm_load('" + dict_Arguments['TEST'] + "',convert_target=convert_target,input_size=input_size,compute_targets_metadata=False)\n"
+            result += "print \"Loading valid data from " + dict_Arguments['VALID'] + "\"\n"
+            result += "validData = mlpython_io.libsvm_load('" + dict_Arguments['VALID'] + "',convert_target=convert_target,input_size=input_size,compute_targets_metadata=False)\n\n"
+            result += "import mlpython.mlproblems.generic as multiregressionProblem    \n"
+            result += "trainData[1]['target_size'] = target_size\n"
+            result += "validData[1]['target_size'] = target_size\n"
+            result += "testData[1]['target_size'] = target_size\n"
+            result += "trainset = multiregressionProblem.MLProblem(trainData[0], trainData[1])\n"
+            result += "validset = trainset.apply_on(validData[0], validData[1])\n"
+            result += "testset = trainset.apply_on(testData[0], testData[1])\n\n"
+
+    if kfoldParam == 1:
+        if datasetFromFile == False: # If dataset not from file
+            result += '\n# K fold code\n'
+            result += Template('k_fold_datasets = dataset_store.get_${TASK}_problem(\'${DATASET}\')\n').safe_substitute(dict_Arguments)
+            result += Template('k_fold_experiment = dataset_store.get_k_fold_experiment(k_fold_datasets,k=${KFOLD})\n\n').safe_substitute(dict_Arguments)
+            result += 'trainset, validset, testset = k_fold_experiment[int(sys.argv[0]) - 1]\n'
+        else:
+            result += '\n# K fold code\n'
+            result += 'k_fold_datasets = trainset,validset,testset\n'
+            result += Template('k_fold_experiment = dataset_store.get_k_fold_experiment(k_fold_datasets,k=${KFOLD})\n\n').safe_substitute(dict_Arguments)
+            result += 'trainset, validset, testset = k_fold_experiment[int(sys.argv[0]) - 1]\n'
+    else:
+        if datasetFromFile == False: # If dataset not from file
+            result += Template('trainset,validset,testset = dataset_store.get_${TASK}_problem(\'${DATASET}\')\n\n').safe_substitute(dict_Arguments)
+        
+    # Main code
+    if earlyStoppingParam == 4: # Early_Stopping
+        result += '# Early stopping code\n'
+        result += 'best_val_error = np.inf\n'
+        result += 'best_it = 0\n'
+        result += 'str_header = \'best_it\\t\'\n'
+        result += Template('look_ahead = ${LOOK_AHEAD}\n').safe_substitute(dict_Arguments)
+        result += 'n_incr_error = 0\n'
+        result += Template('for stage in range(${BEG},${END}+1,${INCR}):\n').safe_substitute(dict_Arguments)
+        result += '    if not n_incr_error < look_ahead:\n'
+        result += '        break\n'
+        result += Template('    myObject.${EARLY_STOPPING} = stage\n').safe_substitute(dict_Arguments)
+        result += '    myObject.train(trainset)\n'
+        result += '    n_incr_error += 1\n'
+        result += '    print \'Evaluating on validation set\'\n'
+        result += '    outputs, costs = myObject.test(validset)\n'
+        result += '    error = np.mean(costs,axis=0)[' + str(early_stopping_cost_id) + ']\n'
+        result += '    print \'Error: \' + str(error)\n'
+        result += '    if error < best_val_error:\n'
+        result += '        best_val_error = error\n'
+        result += '        best_it = stage\n'
+        result += '        n_incr_error = 0\n'
+        result += '        best_model = copy.deepcopy(myObject)\n\n'
+        result += 'outputs_tr,costs_tr = best_model.test(trainset)\n'
+        result += 'columnCount = len(costs_tr.__iter__().next())\n'
+        result += 'outputs_v,costs_v = best_model.test(validset)\n'
+        result += 'outputs_t,costs_t = best_model.test(testset)\n\n'
+        result += '# Preparing result line\n'
+        result += 'str_modelinfo = str(best_it) + \'\\t\'\n'
+    else:
+        result += 'model = myObject.train(trainset)\n'
+        result += 'outputs_tr,costs_tr = myObject.test(trainset)\n'
+        result += 'columnCount = len(costs_tr.__iter__().next())\n'
+        result += 'outputs_v,costs_v = myObject.test(validset)\n'
+        result += 'outputs_t,costs_t = myObject.test(testset)\n\n'
+        result += '# Preparing result line\n'
+        result += 'str_modelinfo = ""\n'
+
+    result += 'train = ""\n'
+    result += 'valid = ""\n'
+    result += 'test = ""\n'
+    if earlyStoppingParam != 4: # If not Early Stopping
+		result += 'str_header = ""\n'
+    result += '# Get average of each costs\n'
+    result += 'for index in range(columnCount):\n'
+    result += '    train = str(np.mean(costs_tr,axis=0)[index])\n'
+    result += '    valid = str(np.mean(costs_v,axis=0)[index])\n'
+    result += '    test = str(np.mean(costs_t,axis=0)[index])\n'
+    result += '    str_header += \'train\' + str(index+1) + \'\\tvalid\' + str(index+1) + \'\\ttest\' + str(index+1)\n'
+    result += '    str_modelinfo += train + \'\\t\' + valid + \'\\t\' + test\n'
+    result += '    if ((index+1) < columnCount): # If not the last\n'
+    result += '        str_header += \'\\t\'\n'
+    result += '        str_modelinfo += \'\\t\'\n'
+    result += 'str_header += \'\\n\'\n'
+    # Different result_file name and content if kfold is used.
+    if kfoldParam == 1:
+        result += Template('file_name, ext = os.path.splitext(\'${RESULTS}\')\n').safe_substitute(dict_Arguments)
+        result += 'result_file = file_name + \'_fold_\' + sys.argv[0] + ext\n\n'
+    else:
+        result += Template('result_file = \'${RESULTS}\'\n\n').safe_substitute(dict_Arguments)
+    result += '# Preparing result file\n'
+    result += 'header_line = ""\n'
+    if len(options) >= 1: # If more options was set
+        result += 'header_line += ' + str_RequiredParam + '\n'
+    result += 'header_line += str_header\n'
+    result += 'if not os.path.exists(result_file):\n'
+    result += '    f = open(result_file, \'w\')\n'
+    result += '    f.write(header_line)\n'
+    result += '    f.close()\n\n'
+    result += '# Look if there is optional values to display\n'
+    result += 'if str_ParamOptionValue == "":\n'
+    result += '    model_info = [str_modelinfo]\n'
+    result += 'else:\n'
+    result += '    model_info = [str_ParamOptionValue,str_modelinfo]\n\n'
+    result += 'line = \'\\t\'.join(model_info)+\'\\n\'\n'
+    result += 'f = open(result_file, "a")\n'
+    result += 'fcntl.flock(f.fileno(), fcntl.LOCK_EX)\n'
+    result += 'f.write(line)\n'
+    result += 'f.close() # unlocks the file\n'
+    
+    print result # Print result in a file (' > ' must be used)
+else:
+    usage_msg = """Usage: create_experiment_script TASK=task DATASET=dataset MODULE=mlpython.module LEARNER=Learner RESULTS=results_file.txt [EARLY_STOPPING=option_es BEG=1 INCR=1 END=500 LOOK_AHEAD=10 [EARLY_STOPPING_COST_ID=0] ] [KFOLD=5] [option1 option2]
+       or
+       create_experiment_script TASK=task TRAIN=train_file.libsvm VALID=valid_file.libsvm TEST=test_file.libsvm MODULE=mlpython.module LEARNER=Learner RESULTS=results_file.txt [EARLY_STOPPING=option_es BEG=1 INCR=1 END=500 LOOK_AHEAD=10 [EARLY_STOPPING_COST_ID=0] ] [KFOLD=5] [option1 option2]
+
+The usage shows two different calls for the script. You can either use MLPython's datasets or your own \'TRAIN\', \'VALID\' and \'TEST\' files in libsvm format.
+
+The options \'option1\' and \'option2\' here are Learner's options that will be set when you call your script. For example: python scrypt.py option1_value option2_value
+
+Example 1:
+create_experiment_script TASK=classification DATASET=heart MODULE=mlpython.learners.third_party.milk.classification LEARNER=TreeClassifier RESULTS=results_file.txt min_split criterion > train_script.py
+python train_script.py 4 \\'information_gain\\'
+
+Example 2:
+create_experiment_script TASK=classification DATASET=heart MODULE=mlpython.learners.classification LEARNER=NNet RESULTS=results_file.txt EARLY_STOPPING=n_stages BEG=1 INCR=1 END=500 LOOK_AHEAD=10 seed > early_stopping_script.py
+python early_stopping_script.py 1234
+
+Example 3:
+create_experiment_script TASK=classification DATASET=heart MODULE=mlpython.learners.third_party.milk.classification LEARNER=TreeClassifier RESULTS=results_file.txt KFOLD=5 min_split criterion > kfold_script.py
+python kfold_script.py 2 4 \\'information_gain\\'
+
+Example 4:
+create_experiment_script TASK=classification TRAIN=train_file.libsvm VALID=valid_file.libsvm TEST=test_file.libsvm MODULE=mlpython.learners.classification LEARNER=NNet RESULTS=results_file.txt n_stages learning_rate > train_custom_nnet.py
+python train_custom_nnet.py 50 0.001
+    """
+    print usage_msg

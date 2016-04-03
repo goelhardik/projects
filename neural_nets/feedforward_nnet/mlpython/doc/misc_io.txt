@@ -1,0 +1,7 @@
+.. _misc_io:
+
+IO
+==
+
+.. automodule:: misc.io
+   :members:

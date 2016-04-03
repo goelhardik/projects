@@ -1,0 +1,13 @@
+.. _learners_third_party_libsvm:
+
+LIBSVM Learners
+===============
+
+.. automodule:: learners.third_party.libsvm
+   :members:
+
+LIBSVM Classifiers
+------------------
+
+.. automodule:: learners.third_party.libsvm.classification
+   :members:

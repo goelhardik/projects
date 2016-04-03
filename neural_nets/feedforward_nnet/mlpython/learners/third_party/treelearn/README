@@ -1,0 +1,18 @@
+To use MLPython's interface with the TreeLearn library, you'll need to
+install the TreeLearn and scikits-learn libraries. Also note that
+TreeLearn requires Python 2.7 or later.
+
+To install scikits-learn, one option is to use easy_install: ::
+
+   easy_install -U scikit-learn
+
+For other ways of installing scikits-learn, see http://scikit-learn.sourceforge.net/dev/install.html#installing-an-official-release.
+
+To install TreeLearn:
+
+1. download TreeLearn through this link: https://github.com/capitalk/treelearn/zipball/master
+2. unzip the downloaded content and run (possibly with sudo): ::
+
+    python setup.py install
+
+And that should do it!

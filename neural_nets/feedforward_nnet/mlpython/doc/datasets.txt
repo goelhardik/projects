@@ -1,0 +1,254 @@
+.. _datasets:
+
+Datasets
+====================================
+
+.. automodule:: datasets
+   :members:
+
+Dataset store
+-------------
+
+.. automodule:: datasets.store
+   :members:
+
+20-newsgroups
+--------------------
+
+.. automodule:: datasets.newsgroups
+   :members:
+
+Abalone
+-------------
+
+.. automodule:: datasets.abalone
+   :members:
+
+Adult
+-------------
+
+.. automodule:: datasets.adult
+   :members:
+
+Bibtex
+-------------
+
+.. automodule:: datasets.bibtex
+   :members:
+
+Binarized MNIST
+---------------
+
+.. automodule:: datasets.binarized_mnist
+   :members:
+
+Cadata
+-----------------
+
+.. automodule:: datasets.cadata
+   :members:
+
+CIFAR-10
+-----------------
+
+.. automodule:: datasets.cifar10
+   :members:
+
+Connect-4
+-----------------
+
+.. automodule:: datasets.connect4
+   :members:
+
+Convex
+-----------------
+
+.. automodule:: datasets.convex
+   :members:
+
+Corel5k
+-----------------
+
+.. automodule:: datasets.corel5k
+   :members:
+
+Corrupted MNIST
+-------------------------------------------
+
+.. automodule:: datasets.corrupted_mnist
+   :members:
+
+Corrupted OCR letters
+-------------------------------------------
+
+.. automodule:: datasets.corrupted_ocr_letters
+   :members:
+
+DNA
+-----------
+
+.. automodule:: datasets.dna
+   :members:
+
+Heart
+-------------------------------------------
+
+.. automodule:: datasets.heart
+   :members:
+
+Housing
+-------------------------------------------
+
+.. automodule:: datasets.housing
+   :members:
+
+Labeled Faces in the Wild (face completion)
+-------------------------------------------
+
+.. automodule:: datasets.face_completion_lfw
+   :members:
+
+Labeled Faces in the Wild (occluded faces)
+------------------------------------------
+
+.. automodule:: datasets.occluded_faces_lfw
+   :members:
+
+LETOR 4.0 MQ 2007
+-------------------------------------------
+
+.. automodule:: datasets.letor_mq2007
+   :members:
+
+LETOR 4.0 MQ 2008
+-------------------------------------------
+
+.. automodule:: datasets.letor_mq2008
+   :members:
+
+MajMin
+-----------
+
+.. automodule:: datasets.majmin
+   :members:
+
+Mediamill
+-----------
+
+.. automodule:: datasets.mediamill
+   :members:
+
+Medical
+-----------
+
+.. automodule:: datasets.medical
+   :members:
+
+MNIST
+-------------
+
+.. automodule:: datasets.mnist
+   :members:
+
+MNIST basic
+-------------
+
+.. automodule:: datasets.mnist_basic
+   :members:
+
+MNIST background-images
+------------------------
+
+.. automodule:: datasets.mnist_background_images
+   :members:
+
+MNIST background-random
+------------------------
+
+.. automodule:: datasets.mnist_background_random
+   :members:
+
+MNIST rotated
+-------------
+
+.. automodule:: datasets.mnist_rotated
+   :members:
+
+MNIST rotated background-images
+--------------------------------
+
+.. automodule:: datasets.mnist_rotated_background_images
+   :members:
+
+MTurk
+-----------------
+
+.. automodule:: datasets.mturk
+   :members:
+
+Mushrooms
+-----------------
+
+.. automodule:: datasets.mushrooms
+   :members:
+
+NIPS
+-------------
+
+.. automodule:: datasets.nips
+   :members:
+
+Occluded MNIST
+-------------------
+
+.. automodule:: datasets.occluded_mnist
+   :members:
+
+OCR letters
+-------------------
+
+.. automodule:: datasets.ocr_letters
+   :members:
+
+Rectangles
+-------------------
+
+.. automodule:: datasets.rectangles
+   :members:
+
+Rectangles images
+-------------------
+
+.. automodule:: datasets.rectangles_images
+   :members:
+
+SARCOS
+-------------------
+
+.. automodule:: datasets.sarcos
+   :members:
+
+Web
+-------------
+
+.. automodule:: datasets.web
+   :members:
+
+Yahoo! Learning to Rank Challenge, Set 1 
+----------------------------------------
+
+.. automodule:: datasets.yahoo_ltrc1
+   :members:
+
+Yahoo! Learning to Rank Challenge, Set 2
+----------------------------------------
+
+.. automodule:: datasets.yahoo_ltrc2
+   :members:
+
+Yeast
+-------------
+
+.. automodule:: datasets.yeast
+   :members:
+

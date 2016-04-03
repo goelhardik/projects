@@ -1,0 +1,7 @@
+To use Laurens van der Maaten's t-SNE for python, do the following:
+
+1. download the python code here: http://homepage.tudelft.nl/19j49/t-SNE.html
+2. put the code in this directory (mlpython/misc/third_party/tsne/)
+
+And that should do it! Module mlpython.misc.visualize provides an
+interface to this code.
