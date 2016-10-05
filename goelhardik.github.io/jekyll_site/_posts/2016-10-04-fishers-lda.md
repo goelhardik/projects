@@ -2,7 +2,7 @@
 layout: post
 comments: true
 title: Implementing Fisher&rsquo;s LDA from scratch in Python
-message: <img src="../images/lda.png" height="256" width="512"/>
+message: <img src="../images/lda.png" />
 ---
 
 
