@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Implementing Fisher&rsquo;s LDA from scratch in Python &middot; Hardik Goel
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+                                 <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- fa-icon -->
+  <script src="https://use.fontawesome.com/dc0101c58b.js"></script>
+</head>
+
+
+  <body class="layout-reverse theme-base-08">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+		<img src="/images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
+		    -ms-transform: rotate(1deg); /* IE 9 */
+			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
+				    transform: rotate(1deg);" />
+        <a href="/">
+          Hardik Goel
+        </a>
+      </h1>
+      <p class="lead">Computer Scientist & Graduate Student <h3 style="white-space: pre;"> <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3></p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item" href="/">Home</a>
+
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about/">About Me</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+
+      <a class="sidebar-nav-item" href="https://github.com/goelhardik">Projects</a>
+    </nav>
+
+	<!--<p>&copy; 2016. All rights reserved.</p>-->
+  </div>
+</div>
+
+
+    <div class="content container">
+      <script type="text/javascript"
+    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<div class="post">
+  <h1 class="post-title">Implementing Fisher&rsquo;s LDA from scratch in Python</h1>
+  <span class="post-date">04 Oct 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/10/04/fishers-lda/#disqus_thread">0 Comments</a></span>
+  <div class="message">
+    <strong>Fisher&rsquo;s Linear Discriminant Analysis (LDA)</strong> is a dimension reduction technique that can be used for classification as well. In this blog post, we will learn more about Fisher&rsquo;s LDA and implement it from scratch in Python.
+</div>
+
+<p><strong>What?</strong><br/>
+As mentioned above, Fisher&rsquo;s LDA is a dimension reduction technique. Such techniques can primarily be used to reduce the dimensionality for high-dimensional data. People do this for multiple reasons - dimension reduction as feature extraction, dimension reduction for classification or for data visualizaiton.<br/></p>
+
+<p><strong>How?</strong><br/>
+Since this is the theory section, <strong>key takeaways</strong> from it are as follows (in case, you do not want to spend time on it)<br/>
+1. Calculate \(S_{b}\), \(S_{w}\) and \(d^{\prime}\) largest eigenvalues of \(S_{w}^{-1}S_{b}\).<br/>
+2. Can project to a maximum of \(K - 1\) dimensions.<br/>
+<br/>
+The core idea is to learn a set of parameters \(w \in \mathbb{R}^{d \times d^{\prime}}\), that are used to project the given data \(x \in \mathbb{R}^{d}\) to a smaller dimension \(d^{\prime}\). The figure below <a href="#bishop2006pattern">(Bishop, 2006)</a> shows an illustration. The original data is in 2 dimensions, \(d = 2\) and we want to project it to 1 dimension, \(d = 1\).
+<table class="image">
+    <caption align="bottom">LDA example</caption>
+    <center><img src="/images/lda.png" alt="LDA example"/></center>
+</table></p>
+
+<p>If we project the 2-D data points onto a line (1-D), out of all such lines, our goal is to find the one which maximizes the distance between the means of the 2 classes, after projection. If we could do that, we could achieve a good separation between the classes in 1-D. This is illustrated in the figure on the left and can be captured in the idea of maximizing the &quot;<em>between class covariance</em>&quot;. However, as we can see that this causes a lot of overlap between the projected classes. We want to minimize this overlap as well. To handle this, Fisher&rsquo;s LDA tries to minimize the &quot;<em>within-class covariance</em>&quot; of each class. Minimizing this covariance leads us to the projection in the figure on the right hand side, which has minimal overlap. Formalizing this, we can represent the objective as follows.</p>
+
+<p>$$J(w) = \frac{w^{\mathsf{T}}S_{b}w}{w^{\mathsf{T}}S_{w}w}$$</p>
+
+<p>where \(S_{b} \in \mathbb{R}^{d \times d}\) and \(S_{w} \in \mathbb{R}^{d \times d}\) are the between-class and within-class covariance matrices, respectively. They are calculated as</p>
+
+<p>$$S_{b} = \sum_{k = 1}^K (m_{k} - m)N_{k}(m_{k} - m)^{\mathsf{T}}$$</p>
+
+<p>$$S_{w} = \sum_{k = 1}^K \sum_{n = 1}^{N_{k}} (X_{nk} - m_{k})(X_{nk} - m_{k})^{\mathsf{T}}$$</p>
+
+<p>where \(X_{nk}\) is the \(n\)th data example in the \(k\)th class, \(N_{k}\) is the number of examples in class \(k\), \(m\) is the overall mean of the entire data and \(m_{k}\) is the mean of the \(k\)th class.
+Now using Lagrangian dual and the KKT conditions, the problem of maximizing \(J\) can be transformed into the solution</p>
+
+<p>$$S_{w}^{-1}S_{b}w = \lambda w$$</p>
+
+<p>which is an eigenvalue problem for the matrix \(S_{w}^{-1}S_{b}\). Thus our final solution for \(w\) will be the eigenvectors of the above equation, corresponding to the largest eigenvalues. For reduction to \(d^{\prime}\) dimensions, we take the \(d^{\prime}\) largest eigenvalues as they will contain the most information. Also, note that if we have \(K\) classes, the maximum value of \(d^{\prime}\) can be \(K - 1\). That is, we cannot project \(K\) class data to a dimension greater than \(K - 1\). (Of course, \(d^{\prime}\) cannot be greater than the original data dimension \(d\)). This is because of the following reason. Note that the between-class scatter matrix, \(S_{b}\) was a sum of \(K\) matrices, each of which is of rank 1, being an outer product of two vectors. Also, because the overall mean and the individual class means are related, only (\(K - 1\)) of these \(K\) matrices are independent. Thus \(S_{b}\) has a maximum rank of \(K - 1\) and hence there are only \(K - 1\) non-zero eigenvalues. Thus we are unable to project the data to more than \(K - 1\) dimensions.
+<br/></p>
+
+<p><strong>Code</strong>
+<br/>
+The main part of the code is shown below. If you are looking for the entire code with data preprocessing, train-test split etc., find it <a href="https://github.com/goelhardik/projects/tree/master/fishers_lda">here</a>.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># Function estimates the LDA parameters</span>
+    <span class="k">def</span> <span class="nf">estimate_params</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+        <span class="c"># group data by label column</span>
+        <span class="n">grouped</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,</span><span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">])</span>
+
+        <span class="c"># calculate means for each class</span>
+        <span class="n">means</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes</span><span class="p">:</span>
+            <span class="n">means</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classwise</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">))</span>
+
+        <span class="c"># calculate the overall mean of all the data</span>
+        <span class="n">overall_mean</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">))</span>
+
+        <span class="c"># calculate between class covariance matrix</span>
+        <span class="c"># S_B = \sigma{N_i (m_i - m) (m_i - m).T}</span>
+        <span class="n">S_B</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">S_B</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classwise</span><span class="p">[</span><span class="n">c</span><span class="p">]),</span>
+                               <span class="n">np</span><span class="o">.</span><span class="n">outer</span><span class="p">((</span><span class="n">means</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">-</span> <span class="n">overall_mean</span><span class="p">),</span> 
+                                        <span class="p">(</span><span class="n">means</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">-</span> <span class="n">overall_mean</span><span class="p">)))</span>
+
+        <span class="c"># calculate within class covariance matrix</span>
+        <span class="c"># S_W = \sigma{S_i}</span>
+        <span class="c"># S_i = \sigma{(x - m_i) (x - m_i).T}</span>
+        <span class="n">S_W</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">S_B</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> 
+        <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">classes</span><span class="p">:</span> 
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">subtract</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classwise</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">means</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+            <span class="n">S_W</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">tmp</span><span class="p">,</span> <span class="n">tmp</span><span class="o">.</span><span class="n">T</span><span class="p">),</span> <span class="n">S_W</span><span class="p">)</span>
+
+        <span class="c"># objective : find eigenvalue, eigenvector pairs for inv(S_W).S_B</span>
+        <span class="n">mat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">pinv</span><span class="p">(</span><span class="n">S_W</span><span class="p">),</span> <span class="n">S_B</span><span class="p">)</span>
+        <span class="n">eigvals</span><span class="p">,</span> <span class="n">eigvecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eig</span><span class="p">(</span><span class="n">mat</span><span class="p">)</span>
+        <span class="n">eiglist</span> <span class="o">=</span> <span class="p">[(</span><span class="n">eigvals</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">eigvecs</span><span class="p">[:,</span> <span class="n">i</span><span class="p">])</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">eigvals</span><span class="p">))]</span>
+
+        <span class="c"># sort the eigvals in decreasing order</span>
+        <span class="n">eiglist</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">eiglist</span><span class="p">,</span> <span class="n">key</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span> <span class="p">:</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">reverse</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+
+        <span class="c"># take the first num_dims eigvectors</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">eiglist</span><span class="p">[</span><span class="n">i</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">num_dims</span><span class="p">)])</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">w</span> <span class="o">=</span> <span class="n">w</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">means</span> <span class="o">=</span> <span class="n">means</span>
+        <span class="k">return</span>
+
+    <span class="c"># estimate the LDA parameters</span>
+    <span class="n">estimate_params</span><span class="p">(</span><span class="n">traindata</span><span class="p">)</span></code></pre></figure>
+
+<p>The code is pretty self-explanatory if you followed the theory above and read the comments in the code. Once we estimate the parameters, there are two ways to classify it.<br/>
+<ul>
+<li>
+<strong>Thresholding</strong><br/>
+In one-dimensional projections, we find a threshold \(w_{0}\), which can be basically the mean of the projected means in the case of 2-class classification. Points above this threshold go into one class, while the ones below go in to the other class.
+Here is the code to do that.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Function to calculate the classification threshold.</span>
+<span class="sd">Projects the means of the classes and takes their mean as the threshold.</span>
+<span class="sd">Also specifies whether values greater than the threshold fall into class 1 </span>
+<span class="sd">or class 2.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">def</span> <span class="nf">calculate_threshold</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># project the means and take their mean</span>
+    <span class="n">tot</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">tot</span> <span class="o">+=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">c</span><span class="p">])</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">w0</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">tot</span>
+
+    <span class="c"># for 2 classes case; mark if class 1 is &gt;= w0 or &lt; w0</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">mu1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="p">[</span><span class="n">c1</span><span class="p">])</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">mu1</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w0</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c1</span> <span class="o">=</span> <span class="s">&#39;ge&#39;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">c1</span> <span class="o">=</span> <span class="s">&#39;l&#39;</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Function to calculate the scores in thresholding method.</span>
+<span class="sd">Assigns predictions based on the calculated threshold.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">def</span> <span class="nf">calculate_score</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span>
+    <span class="c"># project the inputs</span>
+    <span class="n">proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">inputs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="c"># assign the predicted class</span>
+    <span class="n">c1</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">c2</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="k">if</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">c1</span> <span class="o">==</span> <span class="s">&#39;ge&#39;</span><span class="p">):</span>
+        <span class="n">proj</span> <span class="o">=</span> <span class="p">[</span><span class="n">c1</span> <span class="k">if</span> <span class="n">proj</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">w0</span> <span class="k">else</span> <span class="n">c2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="p">))]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">proj</span> <span class="o">=</span> <span class="p">[</span><span class="n">c1</span> <span class="k">if</span> <span class="n">proj</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">w0</span> <span class="k">else</span> <span class="n">c2</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">proj</span><span class="p">))]</span>
+    <span class="c"># calculate the number of errors made</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="p">(</span><span class="n">proj</span> <span class="o">!=</span> <span class="n">data</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">])</span>
+    <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">errors</span><span class="p">)</span></code></pre></figure>
+
+<p></li>
+<li></p>
+
+<p><strong>Gaussian Modeling</strong><br/>
+In this method, we project the data points into the \(d^{\prime}\) dimension, and then model a multi-variate Gaussian distribution for each class&rsquo; likelihood distribution \(P(x | C_{k})\). This is done by calculating the means and covariances of the data point projections. The priors \(P(C_{k})\) are estimated as well using the given data by calculating \(\frac{N_{k}}{N}\) for each class \(k\). Using these, we can calculate the posterior \(P(C_{k}|x)\) and then the data points can be classified to the class with the highest probability value. These ideas are solidified in the code below.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Function to estimate gaussian models for each class.</span>
+<span class="sd">Estimates priors, means and covariances for each class.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">def</span> <span class="nf">gaussian_modeling</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">priors</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">classwise</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span>
+        <span class="n">proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">inputs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">priors</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">rowvar</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Utility function to return the probability density for a gaussian, given an </span>
+<span class="sd">input point, gaussian mean and covariance.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">def</span> <span class="nf">pdf</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">point</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span><span class="p">):</span>
+    <span class="n">cons</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">point</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="n">cov</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">cons</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">((</span><span class="n">point</span><span class="o">-</span><span class="n">mean</span><span class="p">),</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="n">cov</span><span class="p">)),(</span><span class="n">point</span><span class="o">-</span><span class="n">mean</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">Function to calculate error rates based on gaussian modeling.</span>
+<span class="sd">&#39;&#39;&#39;</span>
+<span class="k">def</span> <span class="nf">calculate_score_gaussian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">drop_col</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">)</span>
+    <span class="c"># project the inputs</span>
+    <span class="n">proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">inputs</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>
+    <span class="c"># calculate the likelihoods for each class based on the gaussian models</span>
+    <span class="n">likelihoods</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="bp">self</span><span class="o">.</span><span class="n">priors</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">pdf</span><span class="p">([</span><span class="n">x</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span> <span class="k">for</span> <span class="n">ind</span> <span class="ow">in</span> 
+                                                        <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">))],</span> <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> 
+                           <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span><span class="p">[</span><span class="n">c</span><span class="p">])</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> 
+                    <span class="n">classes</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">proj</span><span class="p">])</span>
+    <span class="c"># assign prediction labels based on the highest probability</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">likelihoods</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">labels</span> <span class="o">!=</span> <span class="n">data</span><span class="o">.</span><span class="n">ix</span><span class="p">[:,</span> <span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">errors</span></code></pre></figure>
+
+<p></li>
+<strong>Experiments</strong><br/>
+I used two datasets - Boston housing data and the Digits data. 
+<ul>
+<li>
+<a href="https://archive.ics.uci.edu/ml/datasets/Housing">Boston data</a> has 13 dimensional data points with continuous valued targets, however one can convert the data into categorical data for classification experiments as well. In this case, I converted it into 2 class data, based on the median value of the target. For this dataset, I explore the threshold classification method.
+After using the above code for estimating the parameters and a threshold for classification, I evaluate it on the test set, which gives an error rate of ~14%. The 1-D data projections can be plotted to visualize the separation better. I have used the code below.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">plot_proj_1D</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+    <span class="n">classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">rainbow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">classes</span><span class="p">)))</span>
+    <span class="n">plotlabels</span> <span class="o">=</span> <span class="p">{</span><span class="n">classes</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="p">:</span> <span class="n">colors</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">classes</span><span class="p">))}</span>
+
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+        <span class="n">proj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">w</span><span class="p">,</span> <span class="n">row</span><span class="p">[:</span><span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">])</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">proj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">1</span><span class="p">)</span><span class="o">+</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span>
+                    <span class="n">plotlabels</span><span class="p">[</span><span class="n">row</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">labelcol</span><span class="p">]])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></code></pre></figure>
+
+<p>I have added some random noise to the y-value of the projections so that the points do not overlap, making it difficult to see.
+Plotting the projections for the entire data, the figure looks something like this.
+<table class="image">
+    <caption align="bottom">LDA : 1-D Projections for Boston data with added y-noise</caption>
+    <center><img src="/images/lda.boston.jpg" alt="LDA : 1-D Projections for Boston data with added y-noise"/></center>
+</table></p>
+
+<p></li>
+<li>
+<a href="https://archive.ics.uci.edu/ml/datasets/Optical+Recognition+of+Handwritten+Digits">Digits</a> is a dataset of handwritten digits 0 - 9. It has 64 dimensional data with 10 classes. I used this data as it was for classification. For this dataset, I perform the projection of data into 2 dimensions and then use bivariate Gaussian modeling for classification. After evaluation, the error rate comes out to be ~30% on the test set, which is not bad considering the 64-dimesional, 10-class data is projected to 2-D. For the 2-dimensional scatter plot for the data projections looks like this.</p>
+
+<table class="image">
+    <caption align="bottom">LDA : 2-D Projections for Digits data</caption>
+    <center><img src="/images/digits.2d.jpg" alt="LDA : 2-D Projections for Digits data"/></center>
+</table>
+
+<p>Though there is overlap in the data in 2-D, some classes are well separated as well. The overlap is expected due to the very-low dimensional projection. I think given this constraint, LDA does a good job at projection.
+I thought it would be fun to plot the likelihood gaussian curves as well. So here is the code to do that and the plot obtained.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">plot_bivariate_gaussians</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>                                                                                                                                                    
+    <span class="n">classes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    <span class="n">colors</span> <span class="o">=</span> <span class="n">cm</span><span class="o">.</span><span class="n">rainbow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">classes</span><span class="p">)))</span>
+    <span class="n">plotlabels</span> <span class="o">=</span> <span class="p">{</span><span class="n">classes</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="p">:</span> <span class="n">colors</span><span class="p">[</span><span class="n">c</span><span class="p">]</span> <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">classes</span><span class="p">))}</span>
+
+    <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+    <span class="n">ax3D</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s">&#39;3d&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">c</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">means</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> 
+                                             <span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="n">pdf</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">cons</span> <span class="o">=</span> <span class="mf">1.</span><span class="o">/</span><span class="p">((</span><span class="mi">2</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span><span class="o">**</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">det</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span><span class="p">[</span><span class="n">c</span><span class="p">])</span><span class="o">**</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">))</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        <span class="k">def</span> <span class="nf">pdf</span><span class="p">(</span><span class="n">point</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">cons</span><span class="o">*</span><span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">((</span><span class="n">point</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span><span class="p">[</span><span class="n">c</span><span class="p">]),</span><span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">inv</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">gaussian_cov</span><span class="p">[</span><span class="n">c</span><span class="p">])),(</span><span class="n">point</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">gaussian_means</span><span class="p">[</span><span class="n">c</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">/</span><span class="mf">2.</span><span class="p">)</span>
+
+        <span class="n">zs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">pdf</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ponit</span><span class="p">))</span> <span class="k">for</span> <span class="n">ponit</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">X</span><span class="p">),</span> 
+                                                               <span class="n">np</span><span class="o">.</span><span class="n">ravel</span><span class="p">(</span><span class="n">Y</span><span class="p">))])</span>
+        <span class="n">Z</span> <span class="o">=</span> <span class="n">zs</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+        <span class="n">surf</span> <span class="o">=</span> <span class="n">ax3D</span><span class="o">.</span><span class="n">plot_surface</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">Z</span><span class="p">,</span> <span class="n">rstride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">cstride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+                                   <span class="n">color</span><span class="o">=</span><span class="n">plotlabels</span><span class="p">[</span><span class="n">c</span><span class="p">],</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> 
+                                   <span class="n">antialiased</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></code></pre></figure>
+
+<table class="image">
+    <caption align="bottom">LDA : Projected data likelihood Gaussian plots for Digits data</caption>
+    <center><img src="/images/digits.gaussian.jpg" alt="LDA : Projected data likelihood Gaussian plots for Digits data"/></center>
+</table>
+
+<p></li>
+</ul>
+Hope this was fun and helpful for you to implement your own version of Fisher&rsquo;s LDA.
+If you would like to run the code and produce the results for yourself, follow the <a href="https://github.com/goelhardik/projects/tree/master/fishers_lda">github</a> link to find the runnable code along with the two datasets - Boston and Digits.</p>
+
+<p><strong>References:</strong>
+<ol class="bibliography"><li><span id="bishop2006pattern">Bishop, C. M. (2006). Pattern recognition. <i>Machine Learning</i>, <i>128</i>.</span></li></ol></p>
+
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+   *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables */
+/*
+   var disqus_config = function () {
+       this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+	       this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+		   };
+		   */
+(function() { // DON'T EDIT BELOW THIS LINE
+     var d = document, s = d.createElement('script');
+	     s.src = '//http-goelhardik-github-io.disqus.com/embed.js';
+		     s.setAttribute('data-timestamp', +new Date());
+			     (d.head || d.body).appendChild(s);
+				 })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2016/06/04/mnist-autoencoder/">
+            Building autoencoders in Lasagne
+            <small>04 Jun 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/sampling-sine-wave/">
+            Generating and visualizing data from a sine wave in Python
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/lstm-sine-wave/">
+            Learning to predict a mathematical function using LSTM
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+    </div>
+
+	<script id="dsq-count-scr" src="//http-goelhardik-github-io.disqus.com/count.js" async></script>
+  </body>
+</html>

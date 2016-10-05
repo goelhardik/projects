@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Learning to predict a mathematical function using LSTM &middot; Hardik Goel
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+                                 <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- fa-icon -->
+  <script src="https://use.fontawesome.com/dc0101c58b.js"></script>
+</head>
+
+
+  <body class="layout-reverse theme-base-08">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+		<img src="/images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
+		    -ms-transform: rotate(1deg); /* IE 9 */
+			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
+				    transform: rotate(1deg);" />
+        <a href="/">
+          Hardik Goel
+        </a>
+      </h1>
+      <p class="lead">Computer Scientist & Graduate Student <h3 style="white-space: pre;"> <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3></p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item" href="/">Home</a>
+
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about/">About Me</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+
+      <a class="sidebar-nav-item" href="https://github.com/goelhardik">Projects</a>
+    </nav>
+
+	<!--<p>&copy; 2016. All rights reserved.</p>-->
+  </div>
+</div>
+
+
+    <div class="content container">
+      <script type="text/javascript"
+    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<div class="post">
+  <h1 class="post-title">Learning to predict a mathematical function using LSTM</h1>
+  <span class="post-date">25 May 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/05/25/lstm-sine-wave/#disqus_thread">0 Comments</a></span>
+  <div class="message">
+    <strong>Long Short-Term Memory (LSTM)</strong> is an RNN architecture that is used to learn time-series data over long intervals. Read more about it <a href="https://en.wikipedia.org/wiki/Long_short-term_memory">here</a> and <a href="http://colah.github.io/posts/2015-08-Understanding-LSTMs/">here</a>.
+<br />
+    In this blog post, I'll share how I used an LSTM model to learn a <i>sine wave</i> over time and then how I used this model to generate a sine-wave on its own.
+</div>
+
+<p>In my <a href="/2016/05/25/sampling-sine-wave/">previous post</a>, I shared how I used Python to generate sequential and periodic data from a sine wave. I dumped this data into a file called <em>sinedata.md</em> last time, and we are going to use that dump in this post.</p>
+
+<p>For the LSTM, I have used the library called <a href="https://github.com/Lasagne">Lasagne</a>. It is a great library for easily setting up deep learning models. Also, they provide some <a href="https://github.com/Lasagne/Recipes">&quot;Recipes&quot;</a> for quick setup. I have used the LSTM model they provided for text generation and modified it to suit my needs for learning a sine-wave. So I will only share the relevant code in this post to avoid the clutter.</p>
+
+<p>First we&#39;ll use <em>pickle</em> to load the data that was generated earlier:</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">in_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;sinedata.md&#39;</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
+<span class="n">in_text</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">in_file</span><span class="p">)</span></code></pre></figure>
+
+<p>The parameters used for the LSTM are as below:</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># Sequence Length</span>
+<span class="n">SEQ_LENGTH</span> <span class="o">=</span> <span class="mi">50</span>
+
+<span class="c"># Number of units in the two hidden (LSTM) layers</span>
+<span class="n">N_HIDDEN</span> <span class="o">=</span> <span class="mi">32</span>
+
+<span class="c"># Optimization learning rate</span>
+<span class="n">LEARNING_RATE</span> <span class="o">=</span> <span class="o">.</span><span class="mo">01</span>
+
+<span class="c"># All gradients above this will be clipped</span>
+<span class="n">GRAD_CLIP</span> <span class="o">=</span> <span class="mi">100</span>
+
+<span class="c"># How often should we check the output?</span>
+<span class="n">PRINT_FREQ</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="c"># Number of epochs to train the net</span>
+<span class="n">NUM_EPOCHS</span> <span class="o">=</span> <span class="mi">50</span>
+
+<span class="c"># Batch Size</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">64</span></code></pre></figure>
+
+<p>The LSTM architecture contains just 1 hidden layer with a <code>tanh</code> non-linearity. The output layer has <code>linear</code> non-linearity.
+There is only 1 output unit. So given the last 50 sine wave samples at a distance of 0.1 <em>x-units</em> each, our network will learn to predict the 51st point. Then given the last 49 samples from the data and the generated sample as the 50th sample, our network will predict the 51st sample once again. It will keep doing this, moving forward in time, for ~200 time steps in our case.</p>
+
+<p>So, for this experiment, I have generated sine-wave data for <code>x</code> ranging from 0 to 2000 at a gap of 0.1. I train the LSTM on this data.</p>
+
+<p>The gif below shows what the network predicted after each training iteration.</p>
+
+<p><img src="/images/sine-wave-prediction.gif" alt="placeholder" title="Sine wave predicted"></p>
+
+<p>Some things to note:</p>
+
+<blockquote>
+<ul>
+<li>The network does not take much time to train; probably because of the <em>sequence length</em> of 50 and 32 <em>hidden units</em></li>
+<li>The prediction is almost perfect</li>
+<li>The network can be trained using continuous data and also to predict continuous data</li>
+</ul>
+</blockquote>
+
+<p>Let us track the variation of training time and number of required epochs with change in sequence length. The target training error is <code>&lt; 0.0001</code>.</p>
+
+<p><em>Time Taken</em> vs <em>Sequence Length</em></p>
+
+<p><img src="/images/time-vs-seq.png" alt="placeholder" title="TrainingTime vs SeqLen"></p>
+
+<p><em>Number of Epochs</em> vs <em>Sequence Length</em></p>
+
+<p><img src="/images/epocs-vs-seq.png" alt="placeholder" title="Epochs vs SeqLen"></p>
+
+<p>Some things to note:</p>
+
+<blockquote>
+<ul>
+<li>Sequence length of 20 seems to be enough for training error of the order of 0.0001 </li>
+<li>Time taken increases as sequence length goes beyond 20, which is expected because of the increased complexity of the model </li>
+<li>Number of epochs remains the same more or less, for sequence length beyond 20</li>
+</ul>
+</blockquote>
+
+<p>Let us now track the variation of training time and number of required epochs with change in the number of units in the hidden layer of the LSTM. The target training error is again <code>&lt; 0.0001</code>.</p>
+
+<p><em>Time Taken</em> vs <em># Hidden Units</em></p>
+
+<p><img src="/images/times-vs-nhid.png" alt="placeholder" title="TrainingTime vs #Hidden"></p>
+
+<p><em>Number of Epochs</em> vs <em># Hidden Units</em></p>
+
+<p><img src="/images/epochs-vs-nhid.png" alt="placeholder" title="Epochs vs #Hidden"></p>
+
+<p>Some things to note:</p>
+
+<blockquote>
+<ul>
+<li>~15 seems to be a reasonable number of hidden units for training error of the order of 0.0001 </li>
+<li>Time taken increases as number of hidden untis goes beyond 15, which is expected because of the increased complexity of the model </li>
+<li>Number of epochs remains the same more or less </li>
+</ul>
+</blockquote>
+
+<p>A possible explanation for these observations is that the sine-wave is pretty easy to learn. If the network knows the last ~20 values, it can predict what the next value should be. This optimal sequence length should be higher for more complex functions. Also the number of hidden units of ~15, seems to be good for learning to model a sine-wave.</p>
+
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+   *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables */
+/*
+   var disqus_config = function () {
+       this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+	       this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+		   };
+		   */
+(function() { // DON'T EDIT BELOW THIS LINE
+     var d = document, s = d.createElement('script');
+	     s.src = '//http-goelhardik-github-io.disqus.com/embed.js';
+		     s.setAttribute('data-timestamp', +new Date());
+			     (d.head || d.body).appendChild(s);
+				 })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2016/10/04/fishers-lda/">
+            Implementing Fisher&rsquo;s LDA from scratch in Python
+            <small>04 Oct 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/06/04/mnist-autoencoder/">
+            Building autoencoders in Lasagne
+            <small>04 Jun 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/sampling-sine-wave/">
+            Generating and visualizing data from a sine wave in Python
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+    </div>
+
+	<script id="dsq-count-scr" src="//http-goelhardik-github-io.disqus.com/count.js" async></script>
+  </body>
+</html>

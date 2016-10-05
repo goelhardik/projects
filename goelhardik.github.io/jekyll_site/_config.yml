@@ -1,0 +1,57 @@
+# Dependencies
+markdown:         redcarpet
+highlighter:      pygments
+
+# Permalinks
+permalink:        pretty
+
+# Setup
+title:            Hardik Goel
+tagline:          'Computer Scientist | Graduate Student'
+description:      'Computer Scientist & Graduate Student 
+    <h3 style="white-space: pre;">
+    <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3>'
+url:              http://github.com/goelhardik
+baseurl:          /
+
+author:
+  name:           'Mark Otto'
+  url:            https://twitter.com/mdo
+
+gems: [jekyll-paginate, jekyll/scholar]
+paginate:         5
+paginate_path: "page:num"
+
+# Custom vars
+version:          2.1.0
+
+github:
+  repo:           https://github.com/goelhardik
+
+scholar:
+  style: apa
+  locale: en
+
+  sort_by: none
+  order: ascending
+
+  group_by: none
+  group_order: ascending
+
+  source: ./_bibliography/
+  bibliography: references.bib
+  bibliography_template: "{{reference}}"
+
+  replace_strings: true
+  join_strings:    true
+
+  use_raw_bibtex_entry: true
+  bibtex_filters:
+  - superscript
+  - latex
+
+  details_dir:    bibliography
+  details_layout: bibtex.html
+  details_link:   Details
+
+  query: "@*"

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Building autoencoders in Lasagne &middot; Hardik Goel
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+                                 <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- fa-icon -->
+  <script src="https://use.fontawesome.com/dc0101c58b.js"></script>
+</head>
+
+
+  <body class="layout-reverse theme-base-08">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+		<img src="/images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
+		    -ms-transform: rotate(1deg); /* IE 9 */
+			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
+				    transform: rotate(1deg);" />
+        <a href="/">
+          Hardik Goel
+        </a>
+      </h1>
+      <p class="lead">Computer Scientist & Graduate Student <h3 style="white-space: pre;"> <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3></p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item" href="/">Home</a>
+
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about/">About Me</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+
+      <a class="sidebar-nav-item" href="https://github.com/goelhardik">Projects</a>
+    </nav>
+
+	<!--<p>&copy; 2016. All rights reserved.</p>-->
+  </div>
+</div>
+
+
+    <div class="content container">
+      <script type="text/javascript"
+    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<div class="post">
+  <h1 class="post-title">Building autoencoders in Lasagne</h1>
+  <span class="post-date">04 Jun 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/06/04/mnist-autoencoder/#disqus_thread">0 Comments</a></span>
+  <div class="message">
+    <strong>Autoencoders</strong> are a data-compression model. They can be used to encode a given input into a representation of smaller dimension. A decoder can then be used to reconstruct the input back from the encoded version. In this blog post, I will share how I built an autoencoder in the library <strong>Lasagne</strong>. I will use the MNIST dataset for illustration.
+</div>
+
+<p>Autoencoders are generally used in unsupervised data learning settings. When we have unlabeled data, we can use an autoencoder to learn an internal, low-dimensional representation of the input data. The model does not need output labels, rather the output is supposed to be the reconstruction of the input data itself. The errors are propagated back and slowly we can expect the model to learn a well encoded representation of the input data.</p>
+
+<h2>A simple autoencoder</h2>
+
+<p>Let&#39;s build a simple model with an input layer, a hidden (encoded) layer and an output layer.</p>
+
+<p>First, let&#39;s get done with the imports and define model parameters.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span> 
+<span class="kn">import</span> <span class="nn">pylab</span>
+<span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">theano</span>
+<span class="kn">import</span> <span class="nn">lasagne</span>
+
+<span class="n">MODEL_FILE</span> <span class="o">=</span> <span class="s">&#39;mnist.state_ae.model.lasagne&#39;</span>    <span class="c"># File to store the learned model</span>
+
+<span class="n">N_ENCODED</span> <span class="o">=</span> <span class="mi">32</span>    <span class="c"># Size of encoded representation</span>
+<span class="n">NUM_EPOCHS</span> <span class="o">=</span> <span class="mi">50</span>   <span class="c"># Number of epochs to train the net</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">200</span>  <span class="c"># Batch Size</span>
+<span class="n">NUM_FEATURES</span> <span class="o">=</span> <span class="mi">28</span> <span class="o">*</span> <span class="mi">28</span> <span class="c"># Input feature size</span></code></pre></figure>
+
+<p>Next, define a function to generate batches of data.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">gen_data</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="n">batch_size</span> <span class="o">=</span> <span class="n">BATCH_SIZE</span><span class="p">):</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span><span class="n">NUM_FEATURES</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">batch_size</span><span class="p">):</span>
+        <span class="n">x</span><span class="p">[</span><span class="n">n</span><span class="p">,:]</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="n">p</span><span class="o">+</span><span class="n">n</span><span class="p">,</span> <span class="p">:]</span>
+
+    <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">x</span></code></pre></figure>
+
+<p>Build the network:</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">build_network</span><span class="p">():</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Building network ...&quot;</span><span class="p">)</span>
+       
+    <span class="c"># Define the layers </span>
+    <span class="n">l_in</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">InputLayer</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="bp">None</span><span class="p">,</span> <span class="n">NUM_FEATURES</span><span class="p">))</span>
+    <span class="n">encoder_l_out</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span><span class="n">l_in</span><span class="p">,</span>
+                                    <span class="n">num_units</span><span class="o">=</span><span class="n">N_ENCODED</span><span class="p">,</span>
+                                    <span class="n">W</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">Normal</span><span class="p">(),</span>
+                                    <span class="n">nonlinearity</span><span class="o">=</span><span class="n">lasagne</span><span class="o">.</span><span class="n">nonlinearities</span><span class="o">.</span><span class="n">rectify</span><span class="p">)</span>
+    <span class="n">decoder_l_out</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DenseLayer</span><span class="p">(</span><span class="n">encoder_l_out</span><span class="p">,</span>
+                                    <span class="n">num_units</span> <span class="o">=</span> <span class="n">NUM_FEATURES</span><span class="p">,</span>
+                                    <span class="n">W</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">init</span><span class="o">.</span><span class="n">Normal</span><span class="p">(),</span>
+                                    <span class="n">nonlinearity</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">nonlinearities</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">)</span>
+    
+    <span class="c"># Define some Theano variables</span>
+    <span class="n">target_values</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">tensor</span><span class="o">.</span><span class="n">fmatrix</span><span class="p">(</span><span class="s">&#39;target_output&#39;</span><span class="p">)</span>
+    <span class="n">encoded_output</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="n">encoder_l_out</span><span class="p">)</span>
+    <span class="n">network_output</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">get_output</span><span class="p">(</span><span class="n">decoder_l_out</span><span class="p">)</span>
+    
+    <span class="n">cost</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">squared_error</span><span class="p">(</span><span class="n">network_output</span><span class="p">,</span><span class="n">target_values</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">all_params</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">get_all_params</span><span class="p">(</span><span class="n">decoder_l_out</span><span class="p">,</span><span class="n">trainable</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    
+    <span class="c"># Compute AdaDelta updates for training</span>
+    <span class="n">updates</span> <span class="o">=</span> <span class="n">lasagne</span><span class="o">.</span><span class="n">updates</span><span class="o">.</span><span class="n">adadelta</span><span class="p">(</span><span class="n">cost</span><span class="p">,</span> <span class="n">all_params</span><span class="p">)</span>
+    
+    <span class="c"># Some Theano functions </span>
+    <span class="n">train</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">([</span><span class="n">l_in</span><span class="o">.</span><span class="n">input_var</span><span class="p">,</span> <span class="n">target_values</span><span class="p">],</span>
+                            <span class="n">cost</span><span class="p">,</span>
+                            <span class="n">updates</span><span class="o">=</span><span class="n">updates</span><span class="p">,</span>
+                            <span class="n">allow_input_downcast</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">predict</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">([</span><span class="n">l_in</span><span class="o">.</span><span class="n">input_var</span><span class="p">],</span>
+                                <span class="n">network_output</span><span class="p">,</span>
+                                <span class="n">allow_input_downcast</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+    <span class="n">encode</span> <span class="o">=</span> <span class="n">theano</span><span class="o">.</span><span class="n">function</span><span class="p">([</span><span class="n">l_in</span><span class="o">.</span><span class="n">input_var</span><span class="p">],</span>
+                                <span class="n">encoded_output</span><span class="p">,</span>
+                                <span class="n">allow_input_downcast</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">train</span><span class="p">,</span> <span class="n">predict</span><span class="p">,</span> <span class="n">encode</span></code></pre></figure>
+
+<p>Now, we will use the above model. I have the MNIST dataset dumped in a file using <code>pickle</code>. 
+The data is normalized to be between 0 and 1, and reshaped to be of shape (784, ) from the original (1, 28, 28).
+After loading the dataset into train and test variables, we proceed to train the model.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">state_ae</span>
+
+<span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="c"># Load the dataset</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&quot;Loading data...&quot;</span><span class="p">)</span>
+
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;x_train.mnist&#39;</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
+    <span class="n">x_train</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;x_test.mnist&#39;</span><span class="p">,</span> <span class="s">&#39;rb&#39;</span><span class="p">)</span>
+    <span class="n">x_test</span> <span class="o">=</span> <span class="n">pickle</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+    <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">trainfunc</span><span class="p">,</span> <span class="n">predict</span><span class="p">,</span> <span class="n">encode</span> <span class="o">=</span> <span class="n">state_ae</span><span class="o">.</span><span class="n">build_network</span><span class="p">()</span>
+    <span class="n">learn</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">trainfunc</span><span class="p">,</span> <span class="n">x_test</span><span class="p">)</span>
+    <span class="n">check_model</span><span class="p">(</span><span class="n">x_test</span><span class="p">,</span> <span class="n">predict</span><span class="p">,</span> <span class="n">encode</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">learn</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">trainfunc</span><span class="p">,</span> <span class="n">x_test</span><span class="p">):</span>
+
+    <span class="k">for</span> <span class="n">it</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">state_ae</span><span class="o">.</span><span class="n">NUM_EPOCHS</span><span class="p">):</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="mi">0</span> 
+        <span class="n">count</span> <span class="o">=</span> <span class="mi">0</span> 
+        <span class="n">avg_cost</span> <span class="o">=</span> <span class="mi">0</span> 
+        <span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">state_ae</span><span class="o">.</span><span class="n">gen_data</span><span class="p">(</span><span class="n">x_train</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">avg_cost</span> <span class="o">+=</span> <span class="n">trainfunc</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span><span class="n">p</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_train</span><span class="p">)):</span>
+                <span class="k">break</span>
+
+        <span class="k">print</span><span class="p">(</span><span class="s">&quot;Epoch {} average loss = {}&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">avg_cost</span> <span class="o">/</span> <span class="n">count</span><span class="p">))</span></code></pre></figure>
+
+<p>We train the network for 50 epochs. After that it seems to reach a reasonably good error of 0.023.
+Now we will plot the images and visualize the results.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">check_model</span><span class="p">(</span><span class="n">x_test</span><span class="p">,</span> <span class="n">predict</span><span class="p">,</span> <span class="n">encode</span><span class="p">):</span>
+
+    <span class="n">encoded_imgs</span> <span class="o">=</span> <span class="n">encode</span><span class="p">(</span><span class="n">x_test</span><span class="p">[:,</span> <span class="p">:])</span>
+    <span class="n">decoded_imgs</span> <span class="o">=</span> <span class="n">predict</span><span class="p">(</span><span class="n">x_test</span><span class="p">[:,</span> <span class="p">:])</span>
+
+    <span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+    <span class="n">n</span> <span class="o">=</span> <span class="mi">10</span>  <span class="c"># how many digits we will display</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">40</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n</span><span class="p">):</span>
+        <span class="c"># display original</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">x_test</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gray</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_yaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s">&quot;Original images&quot;</span><span class="p">)</span>
+
+        <span class="c"># display reconstruction</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">decoded_imgs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">28</span><span class="p">,</span> <span class="mi">28</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gray</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_yaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s">&quot;Reconstructed images&quot;</span><span class="p">)</span>
+
+        <span class="c"># display encodings</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplot</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">n</span><span class="p">,</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">2</span><span class="o">*</span><span class="n">n</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">encoded_imgs</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">))</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">gray</span><span class="p">()</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">get_yaxis</span><span class="p">()</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="bp">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">i</span> <span class="o">==</span> <span class="n">n</span> <span class="o">/</span> <span class="mi">2</span><span class="p">):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s">&quot;Encoded images&quot;</span><span class="p">)</span>
+
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span></code></pre></figure>
+
+<p>This is what we get.</p>
+
+<p><img src="/images/mnist_ae_single_layer.png" alt="placeholder" title="MNIST Autoencoder results"></p>
+
+<p>The autoencoder does a rather good job at learning encodings and reconstructing the digits from them. The last row shows the 32 dimensional encoding learned for each of the ten test images (in a 4x8 sized image).</p>
+
+<p>Find the entire working code for this autoencoder in Lasagne on my <a href="https://github.com/goelhardik/autoencoder-lasagne">github</a>.</p>
+
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+   *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables */
+/*
+   var disqus_config = function () {
+       this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+	       this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+		   };
+		   */
+(function() { // DON'T EDIT BELOW THIS LINE
+     var d = document, s = d.createElement('script');
+	     s.src = '//http-goelhardik-github-io.disqus.com/embed.js';
+		     s.setAttribute('data-timestamp', +new Date());
+			     (d.head || d.body).appendChild(s);
+				 })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2016/10/04/fishers-lda/">
+            Implementing Fisher&rsquo;s LDA from scratch in Python
+            <small>04 Oct 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/sampling-sine-wave/">
+            Generating and visualizing data from a sine wave in Python
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/lstm-sine-wave/">
+            Learning to predict a mathematical function using LSTM
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+    </div>
+
+	<script id="dsq-count-scr" src="//http-goelhardik-github-io.disqus.com/count.js" async></script>
+  </body>
+</html>

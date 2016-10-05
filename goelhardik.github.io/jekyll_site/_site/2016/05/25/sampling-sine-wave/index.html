@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Generating and visualizing data from a sine wave in Python &middot; Hardik Goel
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+                                 <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- fa-icon -->
+  <script src="https://use.fontawesome.com/dc0101c58b.js"></script>
+</head>
+
+
+  <body class="layout-reverse theme-base-08">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+		<img src="/images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
+		    -ms-transform: rotate(1deg); /* IE 9 */
+			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
+				    transform: rotate(1deg);" />
+        <a href="/">
+          Hardik Goel
+        </a>
+      </h1>
+      <p class="lead">Computer Scientist & Graduate Student <h3 style="white-space: pre;"> <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3></p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item" href="/">Home</a>
+
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about/">About Me</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+
+      <a class="sidebar-nav-item" href="https://github.com/goelhardik">Projects</a>
+    </nav>
+
+	<!--<p>&copy; 2016. All rights reserved.</p>-->
+  </div>
+</div>
+
+
+    <div class="content container">
+      <script type="text/javascript"
+    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<div class="post">
+  <h1 class="post-title">Generating and visualizing data from a sine wave in Python</h1>
+  <span class="post-date">25 May 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/05/25/sampling-sine-wave/#disqus_thread">0 Comments</a></span>
+  <div class="message">
+    This blog post shows how to generate sequential data by sampling a sine wave (or any other kind of mathematical function). I did this in Python and found a cool way to visualize the data as it is generated.
+</div>
+
+<p>So the objective here is to generate sequential data from a mathematical function - a <em>sine wave</em> is used in this post. Also, the goal is to use Python to do this. We are going to sample a sine wave at a pre-defined interval and dump it to a file for future use in other Python scripts.</p>
+
+<p>Starting with the imports:</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">pylab</span>
+<span class="kn">import</span> <span class="nn">pickle</span></code></pre></figure>
+
+<p>We will use these modules to get our work done.</p>
+
+<ul>
+<li><strong>matplotlib.pyplot</strong> to plot and visualize the data</li>
+<li><strong>numpy</strong> to generate the mathematical function</li>
+<li><strong>pylab</strong> to help with interactive plots</li>
+<li><strong>pickle</strong> to dump the data into a file for future use</li>
+</ul>
+
+<p>Next, we set our range for the <em>x-axis</em> and define our functions.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">xlim</span> <span class="o">=</span> <span class="mi">40</span>
+
+<span class="c"># define functions</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">xlim</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">)</span>
+<span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span><span class="p">)</span></code></pre></figure>
+
+<p>This will generate two lists <code>x</code> and <code>y</code> with our <em>x-axis</em> and <em>y-axis</em> data.</p>
+
+<p>We&#39;ll now dump the <em>y-axis</em> data into our file for future use.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># write the data out to a file</span>
+<span class="n">sinedata</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;sinedata.md&#39;</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span>
+<span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">sinedata</span><span class="p">)</span>
+<span class="n">sinedata</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></code></pre></figure>
+
+<p>The above snippet writes the data of <code>y</code> into a file named <em>sinedata.md</em>. Pickle is specific to Python and it can be used to load the data into another Python script later.</p>
+
+<p>Next, we will visualize the data. Here is the code to do this:</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># interactive mode on</span>
+<span class="n">pylab</span><span class="o">.</span><span class="n">ion</span><span class="p">()</span>
+
+<span class="c"># set the data limits</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">xlim</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="c"># plot the first 200 points in the data</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">200</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">200</span><span class="p">])</span>
+<span class="c"># plot the remaining data incrementally</span>
+<span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">200</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">y</span><span class="p">)):</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">pause</span><span class="p">(</span><span class="mf">0.0005</span><span class="p">)</span> 
+
+<span class="c"># hold the plot until terminated</span>
+<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">pause</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span></code></pre></figure>
+
+<p>I think the comments in the snippet do a good job at the explanation.
+The plot will look something like this:</p>
+
+<p><img src="/images/optimised.gif" alt="placeholder" title="Sine wave data"></p>
+
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+   *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables */
+/*
+   var disqus_config = function () {
+       this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+	       this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+		   };
+		   */
+(function() { // DON'T EDIT BELOW THIS LINE
+     var d = document, s = d.createElement('script');
+	     s.src = '//http-goelhardik-github-io.disqus.com/embed.js';
+		     s.setAttribute('data-timestamp', +new Date());
+			     (d.head || d.body).appendChild(s);
+				 })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2016/10/04/fishers-lda/">
+            Implementing Fisher&rsquo;s LDA from scratch in Python
+            <small>04 Oct 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/06/04/mnist-autoencoder/">
+            Building autoencoders in Lasagne
+            <small>04 Jun 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/lstm-sine-wave/">
+            Learning to predict a mathematical function using LSTM
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+    </div>
+
+	<script id="dsq-count-scr" src="//http-goelhardik-github-io.disqus.com/count.js" async></script>
+  </body>
+</html>
