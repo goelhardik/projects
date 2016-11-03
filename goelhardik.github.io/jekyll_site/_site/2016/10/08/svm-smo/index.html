@@ -11,7 +11,7 @@
 
   <title>
     
-      Implementing Fisher&rsquo;s LDA from scratch in Python &middot; Hardik Goel
+      Implementing SVM SMO algorithm from scratch in Python &middot; Hardik Goel
     
   </title>
 
@@ -73,19 +73,8 @@
           
         
       
-        
-          
-            <a class="sidebar-nav-item" href="/projects/">Projects</a>
-          
-        
-      
-        
-          
-            <a class="sidebar-nav-item" href="/research/">Research</a>
-          
-        
-      
 
+      <a class="sidebar-nav-item" href="https://github.com/goelhardik">Projects</a>
     </nav>
 
 	<!--<p>&copy; 2016. All rights reserved.</p>-->
@@ -98,12 +87,138 @@
     src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
 </script>
 <div class="post">
-  <h1 class="post-title">Implementing Fisher&rsquo;s LDA from scratch in Python</h1>
-  <span class="post-date">04 Oct 2016 &#9642;
-	   <a href="https://goelhardik.github.io/2016/10/04/fishers-lda/#disqus_thread">0 Comments</a></span>
+  <h1 class="post-title">Implementing SVM SMO algorithm from scratch in Python</h1>
+  <span class="post-date">08 Oct 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/10/08/svm-smo/#disqus_thread">0 Comments</a></span>
   <div class="message">
-    <strong>Fisher&rsquo;s Linear Discriminant Analysis (LDA)</strong> is a dimension reduction technique that can be used for classification as well. In this blog post, we will learn more about Fisher&rsquo;s LDA and implement it from scratch in Python.
+    Support Vector Machines (SVM) are a type of models that can be used to perform classification or regression. They are effective because they can perform non-linear classification as well, using what is called the *kernel trick*. The optimization problem that is required to be solved for SVMs is a constrained Quadratic Programming (QP) problem, which can be a bit inefficient to solve if we have input features in high-dimensional spaces. To do this efficiently, an algorithm called Sequential Minimal Optimization (SMO) proposed by John Pratt <a href="#platt1998sequential">(Platt &amp; others, 1998)</a>, is used. We will try to implement this algorithm from scratch today in Python and evaluate it on a 2-class MNIST-13 dataset.
 </div>
+
+<p><strong>Short discussion on SVM classifiers</strong>
+<br/>
+<strong>Separable case</strong>
+The SVM classifier is written as</p>
+
+<p>$$f(w) = w^{\mathsf{T}}x + b$$</p>
+
+<p>If the two classes are represented as \(y \in \{-1, +1\}\), classification is done by the sign of \(f(w)\). If \(f(w)\) is positive, then the example is classified as \(y = 1\), otherwise as \(y = 0\).
+Maximizing the margins between the decision boundary and the closest data points, leads us to the following objective.</p>
+
+<p>$$\min_{w, b} \frac{1}{2}\left\lVert w \right\rVert ^{2} \\
+s.t.\space\space\space y_{i}(w^{\mathsf{T}}x + b) \ge 1 $$</p>
+
+<p>This is the QP problem that can be solved using any QP software. However, if we transform this into a dual optimization problem, we will be able to use kernels that allow us to work in very high dimensional spaces. Once in that form, we will use the SMO algorithm that will be much more efficient than the QP software.
+<br/>
+The Lagrangian for our optimization problem above, can be constructed as</p>
+
+<p>$$ \mathcal{L}(w, b, \alpha) = \frac{1}{2} \left\lVert w \right\rVert ^{2} - \sum_{i = 1}^{n} \alpha_{i}(y_{i}(w^{\mathsf{T}}x_{i} + b) - 1) $$</p>
+
+<p>This is the Lagrange dual. Setting the gradient w.r.t. \(w\) and \(b\), we get</p>
+
+<p>$$ w = \sum_{i = 1}^{n}\alpha_{i}y_{i}x_{i} $$
+and,
+$$ \sum_{i = 1}^{n}\alpha_{i}y_{i} = 0 $$</p>
+
+<p>When we plug this back into the Lagrangian, we get our final dual optimization problem</p>
+
+<p>$$ \mathcal{L}(\alpha) = \sum_{i = 1}^{n}\alpha_{i} - \frac{1}{2} \sum_{i, j = 1}^{n} \alpha_{i}\alpha_{j}y_{i}y_{j}x_{i}^{\mathsf{T}}x_{j}^{\mathsf{T}} $$</p>
+
+<p>which we need to maximize w.r.t. \(\alpha\), given the constraints</p>
+
+<p>$$ \alpha_{i} \ge 0,  \forall i $$
+and,
+$$ \sum_{i = 1}^{n}\alpha_{i}y_{i} = 0 $$</p>
+
+<p>If we find the solution \(d^{*}\) to this dual problem, it is the same as the primal solution \(p^{*}\) because the required conditions and the KKT conditions are satisfied as well. Thus once we find the optimal alphas, \(\alpha^{*}\), we can go back and find the optimal \(w^{*}\) and \(b^{*}\) as well.
+<br/>
+Note that no derivation is being shown here because our main topic is implementing the SMO algorithm, and discussion about Lagrangian derivations is a topic for another post.</p>
+
+<p><strong>Non-separable case</strong>:
+Note that in case if the data examples are not linearly separable, using similar though process a new Lagrangian dual objective can be derived, where everything remains the same, except the constraint on \(\alpha\)s now becomes</p>
+
+<p>$$ 0 \le \alpha_{i} \le C, \forall i $$</p>
+
+<p>where, \(C\) is the regularization parameter, which controls the relative weighting between the twin goals of making the \( \left\lVert w \right\rVert ^{2}\) small and of ensuring that most training set examples have functional margin of at least 1.
+In this case, a reformulation of the dual problem can be written as below (in keeping with (missing reference).</p>
+
+<p>$$ \min_{\alpha} \frac{1}{2}\alpha ^ {\mathsf{T}} Q \alpha - e^{\mathsf{T}} \alpha \\
+s.t. \space\space\space y^{\mathsf{T}} \alpha = 0 \\
+and \space\space\space 0 \le \alpha_{i} \le C $$</p>
+
+<p><strong>Sequential Minimal Optimization (SMO)</strong>
+<br/>
+Note that the final problem formulated above is a Quadractic Programming problem and could have been solved using a QP library. However, the matrix \(Q\) sometimes may be a dense matrix and may be too large to be stored. So a decomposition method is considered to conquer this problem. A decomposition method is an iterative method where in each iteration only a subset of \(\alpha\) is modified, and thus only some columns of \(Q\) are needed. One extreme form of this decomposition is called Sequential Minimal Optimization (SMO). In SMO, only \(2\) \( \alpha\)s are selected and modified in each iteration.</p>
+
+<p><strong>Implementation</strong>
+<br/>
+We will implement the SMO version presented in the paper <a href="#chang2011libsvm">(Chang &amp; Lin, 2011)</a>. The entire working code can be found <a href="">here</a>.
+The important steps in the algorithm are as follows.
+<ul>
+<li>
+Prepare some variables.
+</li>
+<li>
+Perform Working Set Selection (WSS) to select two alphas, \(i\) and \(j\).
+</li>
+<li>
+Update the working set alphas.
+</li>
+</ul></p>
+
+<p>Each of the steps can be coded as below.
+<ul>
+<li>
+<strong>Preparation :</strong>
+<br/>
+Calculate the Kernel and the Q matrix.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="bp">self</span><span class="o">.</span><span class="n">k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">x</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s">&#39;float&#39;</span><span class="p">)</span>                                                                                                                                                                                                             
+<span class="bp">self</span><span class="o">.</span><span class="n">Q</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">)</span></code></pre></figure>
+
+<p>Calculate the quad coefficient for use in the WSS step. This does not change with iterations, so we can calculate and store it for later use to speed up our algorithm.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">a_ts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">n</span><span class="p">):</span>
+        <span class="n">a_ts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">-</span> <span class="mi">2</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">k</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">a_ts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">a_ts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tao</span>
+        <span class="n">a_ts</span><span class="p">[</span><span class="n">s</span><span class="p">,</span> <span class="n">t</span><span class="p">]</span> <span class="o">=</span> <span class="n">a_ts</span><span class="p">[</span><span class="n">t</span><span class="p">,</span> <span class="n">s</span><span class="p">]</span></code></pre></figure>
+
+<p></li></p>
+
+<p><li>
+<strong>WSS :</strong>
+<br/>
+This part refers to Section 4.1.2 in the Chang paper.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">wss</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="c"># calculate I_up and I_low</span>
+    <span class="n">I_up</span> <span class="o">=</span> <span class="p">(((</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alphas</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">C_1</span><span class="p">))</span> <span class="o">|</span>
+            <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alphas</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="n">I_low</span> <span class="o">=</span> <span class="p">(((</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alphas</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">C_minus_1</span><span class="p">))</span> <span class="o">|</span>
+            <span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alphas</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)))</span>
+    <span class="c"># calculate gradient</span>
+    <span class="n">del_f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">Q</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">alphas</span><span class="p">)</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">alphas</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+    <span class="c"># select i</span>
+    <span class="n">y_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">I_up</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">))</span>
+    <span class="n">del_t_f_alpha_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">I_up</span><span class="p">,</span> <span class="n">del_f</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">))</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">y_t</span><span class="p">,</span> <span class="n">del_t_f_alpha_k</span><span class="p">))</span>
+    <span class="c"># select j</span>
+    <span class="n">minus_y_i_del_i_f_alpha_k</span> <span class="o">=</span> <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">del_f</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">y_t</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">I_low</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">y</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">))</span>   
+    <span class="n">del_t_f_alpha_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">I_low</span><span class="p">,</span> <span class="n">del_f</span><span class="p">,</span> <span class="o">-</span><span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">))</span>   
+    <span class="n">ind_minus_y_t_del_t_f_alpha_k</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">y_t</span><span class="p">,</span> <span class="n">del_t_f_alpha_k</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">minus_y_i_del_i_f_alpha_k</span>  
+    <span class="n">j_ind</span> <span class="o">=</span> <span class="n">I_low</span> <span class="o">&amp;</span> <span class="n">ind_minus_y_t_del_t_f_alpha_k</span>   
+    <span class="n">y_t_del_t_f_alpha_k</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">j_ind</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">multiply</span><span class="p">(</span><span class="n">y_t</span><span class="p">,</span> <span class="n">del_t_f_alpha_k</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">))</span>
+    <span class="n">j</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">j_ind</span><span class="p">,</span> 
+                            <span class="n">np</span><span class="o">.</span><span class="n">divide</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">minus_y_i_del_i_f_alpha_k</span> <span class="o">+</span> <span class="n">y_t_del_t_f_alpha_k</span><span class="p">),</span> 
+                                <span class="bp">self</span><span class="o">.</span><span class="n">a_ts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="p">:]),</span> 
+                            <span class="nb">float</span><span class="p">(</span><span class="s">&#39;inf&#39;</span><span class="p">)))</span>
+    <span class="k">return</span> <span class="n">i</span><span class="p">,</span> <span class="n">j</span></code></pre></figure>
+
+<p></li>
+</ul></p>
 
 <p><strong>What?</strong><br/>
 As mentioned above, Fisher&rsquo;s LDA is a dimension reduction technique. Such techniques can primarily be used to reduce the dimensionality for high-dimensional data. People do this for multiple reasons - dimension reduction as feature extraction, dimension reduction for classification or for data visualizaiton.<br/></p>
@@ -358,7 +473,9 @@ Hope this was fun and helpful for you to implement your own version of Fisher&rs
 If you would like to run the code and produce the results for yourself, follow the <a href="https://github.com/goelhardik/projects/tree/master/fishers_lda">github</a> link to find the runnable code along with the two datasets - Boston and Digits.</p>
 
 <p><strong>References:</strong>
-<ol class="bibliography"><li><span id="bishop2006pattern">Bishop, C. M. (2006). Pattern recognition. <i>Machine Learning</i>, <i>128</i>.</span></li></ol></p>
+<ol class="bibliography"><li><span id="platt1998sequential">Platt, J., &amp; others. (1998). Sequential minimal optimization: A fast algorithm for training support vector machines.</span></li>
+<li><span id="chang2011libsvm">Chang, C.-C., &amp; Lin, C.-J. (2011). LIBSVM: a library for support vector machines. <i>ACM Transactions on Intelligent Systems and Technology (TIST)</i>, <i>2</i>(3), 27.</span></li>
+<li><span id="bishop2006pattern">Bishop, C. M. (2006). Pattern recognition. <i>Machine Learning</i>, <i>128</i>.</span></li></ol></p>
 
 </div>
 
@@ -390,6 +507,15 @@ If you would like to run the code and produce the results for yourself, follow t
     
       <li>
         <h3>
+          <a href="/2016/10/04/fishers-lda/">
+            Implementing Fisher&rsquo;s LDA from scratch in Python
+            <small>04 Oct 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
           <a href="/2016/06/04/mnist-autoencoder/">
             Building autoencoders in Lasagne
             <small>04 Jun 2016</small>
@@ -401,15 +527,6 @@ If you would like to run the code and produce the results for yourself, follow t
         <h3>
           <a href="/2016/05/25/sampling-sine-wave/">
             Generating and visualizing data from a sine wave in Python
-            <small>25 May 2016</small>
-          </a>
-        </h3>
-      </li>
-    
-      <li>
-        <h3>
-          <a href="/2016/05/25/lstm-sine-wave/">
-            Learning to predict a mathematical function using LSTM
             <small>25 May 2016</small>
           </a>
         </h3>

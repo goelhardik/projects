@@ -7,7 +7,7 @@ title: About Me
   I am a second year <strong>Computer Science</strong> MS student, working with <a href="http://www-users.cs.umn.edu/~banerjee/">Professor Arindam Banerjee</a> at the <a href="https://twin-cities.umn.edu/">University of Minnesota,     Twin Cities</a>.
 My interests lie in the fields of <strong>Machine Learning & Artificial Intelligence</strong>.
 <br />
-Currently, I am exploring Deep Learning techniques on aviation data for flight safety.
+Currently, I am exploring Deep Learning techniques on aviation data for flight safety. Here's my <a href="{{ site.baseurl }}images/hardik_goel_cv.pdf">CV</a>.
 </p>
 
 
