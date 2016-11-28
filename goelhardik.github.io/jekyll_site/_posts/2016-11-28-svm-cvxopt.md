@@ -2,7 +2,7 @@
 layout: post
 comments: true
 title: Implementing and Visualizing SVM in Python with CVXOPT
-message: <img src="../images/svm-cvxopt/svm.png" />
+message: <img src="../images/svm-cvxopt/svm.png" height="350" width="512"/>
 ---
 
 
