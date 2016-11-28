@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en-us">
+
+  <head>
+  <link href="http://gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+  <!-- Enable responsiveness on mobile devices-->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+  <title>
+    
+      Implementing and Visualizing SVM in Python with CVXOPT &middot; Hardik Goel
+    
+  </title>
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="/public/css/poole.css">
+  <link rel="stylesheet" href="/public/css/syntax.css">
+  <link rel="stylesheet" href="/public/css/hyde.css">
+  <link rel="stylesheet" href="http://fonts.googleapis.com/css?family=PT+Sans:400,400italic,700|Abril+Fatface">
+
+  <!-- Icons -->
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/public/apple-touch-icon-144-precomposed.png">
+                                 <link rel="shortcut icon" href="/public/favicon.ico">
+
+  <!-- RSS -->
+  <link rel="alternate" type="application/rss+xml" title="RSS" href="/atom.xml">
+
+  <!-- fa-icon -->
+  <script src="https://use.fontawesome.com/dc0101c58b.js"></script>
+</head>
+
+
+  <body class="layout-reverse theme-base-08">
+
+    <div class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <h1>
+		<img src="/images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
+		    -ms-transform: rotate(1deg); /* IE 9 */
+			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
+				    transform: rotate(1deg);" />
+        <a href="/">
+          Hardik Goel
+        </a>
+      </h1>
+      <p class="lead">Computer Scientist & Graduate Student <h3 style="white-space: pre;"> <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3></p>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a class="sidebar-nav-item" href="/">Home</a>
+
+      
+
+      
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/about/">About Me</a>
+          
+        
+      
+        
+      
+        
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/projects/">Projects</a>
+          
+        
+      
+        
+          
+            <a class="sidebar-nav-item" href="/research/">Research</a>
+          
+        
+      
+
+    </nav>
+
+	<!--<p>&copy; 2016. All rights reserved.</p>-->
+  </div>
+</div>
+
+
+    <div class="content container">
+      <script type="text/javascript"
+    src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<div class="post">
+  <h1 class="post-title">Implementing and Visualizing SVM in Python with CVXOPT</h1>
+  <span class="post-date">28 Nov 2016 &#9642;
+	   <a href="https://goelhardik.github.io/2016/11/28/svm-cvxopt/#disqus_thread">0 Comments</a></span>
+  <div class="message">
+    <strong>We&rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.</strong>
+</div>
+
+<p>So this post is not about some great technical material on any of the mentioned topics. I have been trying to use <a href="http://cvxopt.org/">cvxopt</a> to implement an SVM-type max-margin classifier for an unrelated problem on Reinforcement Learning. While doing that, I had trouble figuring out how to use the cvxopt library to correctly implement a quadratic programming solver for SVM. Since I eventually figured it out, I am just sharing that here. Let us get into it then.</p>
+
+<p><strong>Generating the data</strong><br/>
+We will generate linearly separable, 2-class data using 2-dimensional Gaussians. Below is the entire Python code to generate, visualize and save the data.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pickle</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="n">DIM</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">COLORS</span> <span class="o">=</span> <span class="p">[</span><span class="s">&#39;red&#39;</span><span class="p">,</span> <span class="s">&#39;blue&#39;</span><span class="p">]</span>
+
+<span class="c"># 2-D mean of ones</span>
+<span class="n">M1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">DIM</span><span class="p">,))</span>
+<span class="c"># 2-D mean of threes</span>
+<span class="n">M2</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">DIM</span><span class="p">,))</span>
+<span class="c"># 2-D covariance of 0.3</span>
+<span class="n">C1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="mf">0.3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">DIM</span><span class="p">,)))</span>
+<span class="c"># 2-D covariance of 0.2</span>
+<span class="n">C2</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diag</span><span class="p">(</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">DIM</span><span class="p">,)))</span>
+
+<span class="k">def</span> <span class="nf">generate_gaussian</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">num</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">multivariate_normal</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">num</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">plot_data_with_labels</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span>
+    <span class="n">unique</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">li</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">unique</span><span class="p">)):</span>
+        <span class="n">x_sub</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="n">y</span> <span class="o">==</span> <span class="n">unique</span><span class="p">[</span><span class="n">li</span><span class="p">]]</span>
+        <span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">x_sub</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">x_sub</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span> <span class="o">=</span> <span class="n">COLORS</span><span class="p">[</span><span class="n">li</span><span class="p">])</span>
+    <span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+
+<span class="n">NUM</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="k">if</span> <span class="n">__name__</span> <span class="o">==</span> <span class="s">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="c"># generate 50 points from gaussian 1</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">generate_gaussian</span><span class="p">(</span><span class="n">M1</span><span class="p">,</span> <span class="n">C1</span><span class="p">,</span> <span class="n">NUM</span><span class="p">)</span>
+    <span class="c"># labels</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">x1</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+    <span class="c"># generate 50 points from gaussian 2</span>
+    <span class="n">x2</span> <span class="o">=</span> <span class="n">generate_gaussian</span><span class="p">(</span><span class="n">M2</span><span class="p">,</span> <span class="n">C2</span><span class="p">,</span> <span class="n">NUM</span><span class="p">)</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">x2</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],))</span>
+    <span class="c"># join</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">x1</span><span class="p">,</span> <span class="n">x2</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">((</span><span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">),</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">print</span><span class="p">(</span><span class="s">&#39;x {} y {}&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+    <span class="n">plot_data_with_labels</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+    <span class="c"># write</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s">&#39;gaussiandata.pickle&#39;</span><span class="p">,</span> <span class="s">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">pickle</span><span class="o">.</span><span class="n">dump</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">f</span><span class="p">)</span></code></pre></figure>
+
+<p>The code has comments and should be an easy read. It will generate a pickle file with the generated data and a plot that looks like below.</p>
+
+<table class="image">
+    <caption align="bottom">Data generated from 2 Gaussians</caption>
+    <center><img src="/images/svm-cvxopt/data.png" alt="Data generated from 2 Gaussians"/></center>
+</table>
+
+<p><strong>Fitting an SVM</strong><br/>
+Now for the second part, let us look at the SVM formulation and the interface that CVXOPT provides. Below is the primal SVM objective.</p>
+
+<p>$$\begin{eqnarray}
+\min_{w}\frac{1}{2}||w||^{2}  \nonumber \\\
+\textrm{s.t.}\quad y_{i}(w^{T}x_{i} + b) \ge 1 \quad \forall i
+\end{eqnarray}$$</p>
+
+<p>And this is the corresponding dual problem.</p>
+
+<p>$$\begin{eqnarray}
+\min_{\alpha}\frac{1}{2} \alpha^{T}K\alpha - 1^{T}\alpha \nonumber \\\
+\textrm{s.t.}\quad \alpha_{i} \ge 0 \quad \forall i \\\
+\textrm{and}\quad y^{T}\alpha = 0
+\end{eqnarray}$$</p>
+
+<p>This is all good. Now below is the interface that cvxopt provides. They have a QP solver and it can be called as <code>cvxopt.solvers.qp(P, q[, G, h[, A, b[, solver[, initvals]]]])</code>. The problem that this solves is-</p>
+
+<p>$$\begin{eqnarray}
+\min_{x}\frac{1}{2} x^{T}Px - q^{T}x \nonumber \\\
+\textrm{s.t.}\quad Gx \preceq h \\\
+\textrm{and}\quad Ax = b
+\end{eqnarray}$$</p>
+
+<p>All we need to do is to map our formulation to the cvxopt interface. We are already almost there. \(\alpha\)s are the \(x\)s, \(K\) is the \(P\), \(q\) is a vector of ones, \(G\) will be an identity matrix with \(-1\)s as its diagonal so that our greater than is transformed into less than, \(h\) is vector of zeros, \(A\) is \(y^{T}\) and \(b\) is 0. That is all we need to do. So below is the code that does that given the training data <code>x</code> and labels <code>y</code>.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">fit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">):</span> 
+    <span class="n">NUM</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">DIM</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c"># we&#39;ll solve the dual</span>
+    <span class="c"># obtain the kernel</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span>
+    <span class="n">K</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="n">K</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">K</span><span class="p">)</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">NUM</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+    <span class="n">G</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="o">-</span><span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">NUM</span><span class="p">))</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">NUM</span><span class="p">))</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="n">matrix</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">solvers</span><span class="o">.</span><span class="n">options</span><span class="p">[</span><span class="s">&#39;show_progress&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">False</span>
+    <span class="n">sol</span> <span class="o">=</span> <span class="n">solvers</span><span class="o">.</span><span class="n">qp</span><span class="p">(</span><span class="n">P</span><span class="p">,</span> <span class="n">q</span><span class="p">,</span> <span class="n">G</span><span class="p">,</span> <span class="n">h</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">)</span>
+    <span class="n">alphas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sol</span><span class="p">[</span><span class="s">&#39;x&#39;</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">alphas</span></code></pre></figure>
+
+<p>Note that <code>sol[&#39;x&#39;]</code> contains the \(x\) that was part of cvxopt interface - it is our \(\alpha\). Now if you are familiar with SVMs, you will know that only a few of the alphas should be non-zero and they will be our support vectors. Using these alphas, we can obtain \(w\) and \(b\) from our original SVM problem. Once we do that, they will together define the decision boundary. \(w\) is equal to \(\Sigma_{i}\alpha_{i}y_{i}x_{i}\) and \(b\) is equal to \(y_{i} - w^{T}x_{i}\) for any \(i\) such that \(\alpha_{i} \gt 0\). So we do the following to obtain them.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># fit svm classifier</span>
+<span class="n">alphas</span> <span class="o">=</span> <span class="n">fit</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+<span class="c"># get weights</span>
+<span class="n">w</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">alphas</span> <span class="o">*</span> <span class="n">y</span><span class="p">[:,</span> <span class="bp">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">x</span><span class="p">,</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">0</span><span class="p">)</span>
+<span class="c"># get bias</span>
+<span class="n">cond</span> <span class="o">=</span> <span class="p">(</span><span class="n">alphas</span> <span class="o">&gt;</span> <span class="mf">1e-4</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">y</span><span class="p">[</span><span class="n">cond</span><span class="p">]</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">cond</span><span class="p">],</span> <span class="n">w</span><span class="p">)</span>
+<span class="n">bias</span> <span class="o">=</span> <span class="n">b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span></code></pre></figure>
+
+<p>Finally, we&rsquo;ll plot the decision boundary for good visualizaiton. Since it will be a line in this case, we need to obtain the slope and intercept of the line from the weights and bias. Here is the code.</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">plot_separator</span><span class="p">(</span><span class="n">ax</span><span class="p">,</span> <span class="n">w</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span> 
+    <span class="n">slope</span> <span class="o">=</span> <span class="o">-</span><span class="n">w</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">/</span> <span class="n">w</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">intercept</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="mi">1</span> <span class="o">+</span> <span class="n">slope</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">b</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">slope</span> <span class="o">+</span> <span class="n">intercept</span><span class="p">,</span> <span class="s">&#39;k-&#39;</span><span class="p">)</span></code></pre></figure>
+
+<p>The entire code is on my <a href="https://github.com/goelhardik/svm-cvxopt">github</a>. Once we run it, we get the following final plot.</p>
+
+<table class="image">
+    <caption align="bottom">SVM decision boundary visualization</caption>
+    <center><img src="/images/svm-cvxopt/svm.png" alt="SVM decision boundary visualization"/></center>
+</table>
+
+<p>Looks pretty neat and is good for visualizing 2-D stuff.</p>
+
+<p><strong>References:</strong>
+<ol class="bibliography"></ol></p>
+
+</div>
+
+<div id="disqus_thread"></div>
+<script>
+
+/**
+   *  RECOMMENDED CONFIGURATION VARIABLES: EDIT AND UNCOMMENT THE SECTION BELOW TO INSERT DYNAMIC VALUES FROM YOUR PLATFORM OR CMS.
+    *  LEARN WHY DEFINING THESE VARIABLES IS IMPORTANT: https://disqus.com/admin/universalcode/#configuration-variables */
+/*
+   var disqus_config = function () {
+       this.page.url = PAGE_URL;  // Replace PAGE_URL with your page's canonical URL variable
+	       this.page.identifier = PAGE_IDENTIFIER; // Replace PAGE_IDENTIFIER with your page's unique identifier variable
+		   };
+		   */
+(function() { // DON'T EDIT BELOW THIS LINE
+     var d = document, s = d.createElement('script');
+	     s.src = '//http-goelhardik-github-io.disqus.com/embed.js';
+		     s.setAttribute('data-timestamp', +new Date());
+			     (d.head || d.body).appendChild(s);
+				 })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+
+
+<div class="related">
+  <h2>Related Posts</h2>
+  <ul class="related-posts">
+    
+      <li>
+        <h3>
+          <a href="/2016/10/04/fishers-lda/">
+            Implementing Fisher&rsquo;s LDA from scratch in Python
+            <small>04 Oct 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/06/04/mnist-autoencoder/">
+            Building autoencoders in Lasagne
+            <small>04 Jun 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
+          <a href="/2016/05/25/sampling-sine-wave/">
+            Generating and visualizing data from a sine wave in Python
+            <small>25 May 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+  </ul>
+</div>
+
+    </div>
+
+	<script id="dsq-count-scr" src="//http-goelhardik-github-io.disqus.com/count.js" async></script>
+  </body>
+</html>
