@@ -76,7 +76,6 @@ a strong {
 /* `:focus` is linked to `:hover` for basic accessibility */
 a:hover,
 a:focus {
-  text-decoration: underline;
 }
 
 /* Headings */
@@ -329,11 +328,44 @@ tbody tr:nth-child(odd) th {
  * page is wrapped in `.page` and is only used on the page layout.
  */
 
-.page,
-.post {
-  margin-bottom: 4em;
+.posts {
+  overflow: hidden;
 }
 
+.post {
+  width: 250px;
+  min-height: 330px;
+  margin-bottom: 20px;
+  margin-left: 15px;
+  margin-right: 15px;
+  float: left;
+  border: 2px solid black;
+  background-color: white;
+  border-radius: 5px;
+}
+
+.post img {
+    margin: 0px;
+    padding: 2px;
+    margin-bottom: 10px;
+    width: 100%;
+    height: 200px;
+}
+
+.post-name {
+  margin: 0px;
+  height: calc(100% - 200px);
+}
+
+.post-name h3 {
+  font-size: 100%;
+  text-align: center;
+}
+
+.page,
+.post-full {
+  margin-bottom: 4em;
+}
 /* Blog post or page title */
 .page-title,
 .post-title,

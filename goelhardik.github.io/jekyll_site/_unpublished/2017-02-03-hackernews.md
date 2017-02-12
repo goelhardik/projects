@@ -1,14 +1,26 @@
 ---
 layout: post
 comments: true
-title: Implementing and Visualizing SVM in Python with CVXOPT
-message: ../images/svm-cvxopt/svm.png
+title: Fetching data from HackerNews using Firebase API in Python
+message: <img src="../images/svm-cvxopt/svm.png" height="350" width="512"/>
 ---
 
 
 <div class="message">
-	<strong>We&rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.</strong>
+	<strong>We&rsquo;ll use the API that HackerNews provides through Firebase and fetch the data to do some analytics.</strong>
 </div>
+
+The first step is to install firebase for Python. Instructions are given [here](https://pypi.python.org/pypi/python-firebase/1.2).
+Or just run these-
+
+{% highlight python %}
+$ sudo pip install requests==1.1.0
+$ sudo pip install python-firebase
+{% endhighlight %}
+
+
+
+
 
 So this post is not about some great technical material on any of the mentioned topics. I have been trying to use [cvxopt](http://cvxopt.org/) to implement an SVM-type max-margin classifier for an unrelated problem on Reinforcement Learning. While doing that, I had trouble figuring out how to use the cvxopt library to correctly implement a quadratic programming solver for SVM. Since I eventually figured it out, I am just sharing that here. Let us get into it then.
 

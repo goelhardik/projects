@@ -14,19 +14,27 @@ title: Home
 
 </script>
 
+<h1 class="page-title">Blogs</h1>
 <div class="posts">
   {% for post in paginator.posts %}
   <div class="post">
+	  <!--
     <h1 class="post-title">
       <a href="{{ post.url }}">
         {{ post.title }}
       </a>
     </h1>
+	  -->
 
+  <a href="{{ post.url }}"><img src="{{ post.message }}"/>
+	<div class="post-name">
+		  <h3>{{ post.title }}</h3>
+	</div>
+  </a>
+  <!--
     <span class="post-date">{{ post.date | date_to_string }} &#9642;
 		<a href="http://goelhardik.github.io{{ post.url }}#disqus_thread">0 Comments</a></span>
-    {{ post.message }}
-	<a href="{{ post.url }}">Read more...</a>
+  -->
   </div>
   {% endfor %}
 </div>

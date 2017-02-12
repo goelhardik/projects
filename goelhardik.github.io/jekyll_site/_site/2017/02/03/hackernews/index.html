@@ -23,7 +23,7 @@
 
   <title>
     
-      Implementing and Visualizing SVM in Python with CVXOPT &middot; Hardik Goel
+      Fetching data from HackerNews using Firebase API in Python &middot; Hardik Goel
     
   </title>
 
@@ -97,6 +97,10 @@
           
         
       
+        
+          
+        
+      
 
     </nav>
 
@@ -109,13 +113,19 @@
       <script type="text/javascript"
     src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
 </script>
-<div class="post-full">
-  <h1 class="post-title">Implementing and Visualizing SVM in Python with CVXOPT</h1>
-  <span class="post-date">28 Nov 2016 &#9642;
-	   <a href="https://goelhardik.github.io/2016/11/28/svm-cvxopt/#disqus_thread">0 Comments</a></span>
+<div class="post">
+  <h1 class="post-title">Fetching data from HackerNews using Firebase API in Python</h1>
+  <span class="post-date">03 Feb 2017 &#9642;
+	   <a href="https://goelhardik.github.io/2017/02/03/hackernews/#disqus_thread">0 Comments</a></span>
   <div class="message">
-    <strong>We&rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.</strong>
+    <strong>We&rsquo;ll use the API that HackerNews provides through Firebase and fetch the data to do some analytics.</strong>
 </div>
+
+<p>The first step is to install firebase for Python. Instructions are given <a href="https://pypi.python.org/pypi/python-firebase/1.2">here</a>.
+Or just run these-</p>
+
+<figure class="highlight"><pre><code class="language-python" data-lang="python"><span class="err">$</span> <span class="n">sudo</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">requests</span><span class="o">==</span><span class="mf">1.1</span><span class="o">.</span><span class="mi">0</span>
+<span class="err">$</span> <span class="n">sudo</span> <span class="n">pip</span> <span class="n">install</span> <span class="n">python</span><span class="o">-</span><span class="n">firebase</span></code></pre></figure>
 
 <p>So this post is not about some great technical material on any of the mentioned topics. I have been trying to use <a href="http://cvxopt.org/">cvxopt</a> to implement an SVM-type max-margin classifier for an unrelated problem on Reinforcement Learning. While doing that, I had trouble figuring out how to use the cvxopt library to correctly implement a quadratic programming solver for SVM. Since I eventually figured it out, I am just sharing that here. Let us get into it then.</p>
 
@@ -279,6 +289,15 @@ Now for the second part, let us look at the SVM formulation and the interface th
     
       <li>
         <h3>
+          <a href="/2016/11/28/svm-cvxopt/">
+            Implementing and Visualizing SVM in Python with CVXOPT
+            <small>28 Nov 2016</small>
+          </a>
+        </h3>
+      </li>
+    
+      <li>
+        <h3>
           <a href="/2016/10/04/fishers-lda/">
             Implementing Fisher&rsquo;s LDA from scratch in Python
             <small>04 Oct 2016</small>
@@ -291,15 +310,6 @@ Now for the second part, let us look at the SVM formulation and the interface th
           <a href="/2016/06/04/mnist-autoencoder/">
             Building autoencoders in Lasagne
             <small>04 Jun 2016</small>
-          </a>
-        </h3>
-      </li>
-    
-      <li>
-        <h3>
-          <a href="/2016/05/25/sampling-sine-wave/">
-            Generating and visualizing data from a sine wave in Python
-            <small>25 May 2016</small>
           </a>
         </h3>
       </li>
