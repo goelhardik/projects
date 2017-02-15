@@ -18,7 +18,7 @@ author:
   url:            https://twitter.com/mdo
 
 gems: [jekyll-paginate, jekyll/scholar]
-paginate:         5
+paginate:         10
 paginate_path: "page:num"
 
 exclude: [Rakefile]

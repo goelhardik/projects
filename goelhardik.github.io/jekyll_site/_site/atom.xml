@@ -4,7 +4,7 @@
  <title>Hardik Goel</title>
  <link href="http://github.com/goelhardik/atom.xml" rel="self"/>
  <link href="http://github.com/goelhardik/"/>
- <updated>2017-02-15T00:18:18-06:00</updated>
+ <updated>2017-02-15T02:05:50-06:00</updated>
  <id>http://github.com/goelhardik</id>
  <author>
    <name>Mark Otto</name>
@@ -13,18 +13,121 @@
 
  
  <entry>
+   <title>Extracting data from HackerNews using Firebase API in Python</title>
+   <link href="http://github.com/goelhardik/2017/02/15/extracting-data-from-hackernews/"/>
+   <updated>2017-02-15T00:00:00-06:00</updated>
+   <id>http://github.com/goelhardik/2017/02/15/extracting-data-from-hackernews</id>
+   <content type="html">&lt;div class=&quot;message&quot;&gt;
+    This will be a small post where we will learn how to extract stories from HackerNews using the Firebase API in Python.
+&lt;/div&gt;
+
+&lt;p&gt;This is like a data collection step for a much bigger problem. You might want to do some form of analysis of the stories being posted on HackerNews or see which user has received the most upvotes in the past year. To do anything like that, we need the data first. Since I like Python, I tried to figure out how to do it and am sharing it here.&lt;/p&gt;
+
+&lt;h3&gt;Install Firebase&lt;/h3&gt;
+
+&lt;p&gt;To get started we will need to install the Firebase Python package. It is easy to do via &lt;code&gt;pip&lt;/code&gt;. Just follow the steps &lt;a href=&quot;https://pypi.python.org/pypi/python-firebase/1.2&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3&gt;Code&lt;/h3&gt;
+
+&lt;p&gt;Once Firebase is installed, we can go ahead and write the code to do our work.&lt;/p&gt;
+
+&lt;p&gt;Do the imports:&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;firebase&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;firebase&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pickle&lt;/span&gt;
+&lt;span class=&quot;kn&quot;&gt;from&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;requests.exceptions&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;HTTPError&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ConnectionError&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;We will see below why we need to import the exceptions.&lt;/p&gt;
+
+&lt;p&gt;Now define our base HackerNews URL. This is the URL using which HackerNews provides its stories through Firebase.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;n&quot;&gt;HN_BASE&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;https://hacker-news.firebaseio.com&amp;quot;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Now we will write our scraper class. We will need to initialize a FirebaseApplication with the URL we defined above.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;class&lt;/span&gt; &lt;span class=&quot;nc&quot;&gt;HN&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;():&lt;/span&gt;
+    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;__init__&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fb&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;firebase&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;FirebaseApplication&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;HN_BASE&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;At this point we need to decide what range of data do we want to get from HackerNews. Let&amp;#39;s assume I want the data from the year 2016 - i.e. from &lt;i&gt;1st Jan 2016 00:00:00 GMT to 1st Jan 2017 00:00:00 GMT&lt;/i&gt;.
+I&amp;#39;ll go &lt;a href=&quot;http://www.epochconverter.com/&quot;&gt;here&lt;/a&gt; and convert these dates into UNIX time.
+Once I have the times, I need to find out a starting story index.
+The stories in HackerNews are numbered starting from 1 in increments of 1 for each story.
+Every post, comment, etc. on HackerNews is a story.
+I could start from 1 and filter out only the ones I want - but that will take eternity to reach 2016&amp;#39;s stories. Instead, with some trial and error you could figure out a reasonable starting index by filling in the last field in &lt;i&gt;https://hacker-news.firebaseio.com/v0/item/[story-id]&lt;/i&gt; and finding a story with time pretty close to our starting time.&lt;/p&gt;
+
+&lt;p&gt;Once we have done that, we can define some variables as below. The values are just for illustration and do not really mean anything.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;n&quot;&gt;hn&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;HN&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;()&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;startind&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;11142100&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;start_time&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1451606400&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;end_time&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1483228800&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;stories_2016.pickle&amp;#39;&lt;/span&gt;
+&lt;span class=&quot;n&quot;&gt;hn&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fetch_stories&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;startind&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start_time&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;end_time&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;Now for the main functions that do the fetching work. The first one is &lt;code&gt;fetch_stories&lt;/code&gt;, which given a start story index, start time and end time, will fetch all the stories that fall within the specified time period. It will also keep saving the results every 100 stories into the filename we provide in the last argument - a safety measure in case your script has to stop for some reason.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;fetch_stories&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;startind&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;[]&lt;/span&gt;
+        &lt;span class=&quot;c&quot;&gt;# found via trial and error&lt;/span&gt;
+        &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;startind&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Getting story&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;story&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get_item&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;story&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;is&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;None&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;or&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;time&amp;#39;&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;not&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;in&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;story&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;continue&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;story&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;time&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;start&lt;/span&gt; &lt;span class=&quot;ow&quot;&gt;and&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;story&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;time&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;lt;=&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;append&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;story&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;elif&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;story&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;[&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;time&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;]&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;end&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;
+            &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;+=&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;
+            &lt;span class=&quot;c&quot;&gt;# save every 100 stories&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;if&lt;/span&gt; &lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;i&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;%&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;100&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;==&lt;/span&gt; &lt;span class=&quot;mi&quot;&gt;0&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt; 
+                &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;wb&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;af&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; 
+                    &lt;span class=&quot;n&quot;&gt;pickle&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dump&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;af&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
+                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;Last dumped story &amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;i&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;-&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39; Total stories&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;len&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;))&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;with&lt;/span&gt; &lt;span class=&quot;nb&quot;&gt;open&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;wb&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; &lt;span class=&quot;k&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;af&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt; 
+            &lt;span class=&quot;n&quot;&gt;pickle&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;dump&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;af&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt; 
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;stories&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The &lt;code&gt;fetch_stories&lt;/code&gt; function calls a &lt;code&gt;get_item&lt;/code&gt; function, which actually gets a particular story from Firebase.&lt;/p&gt;
+
+&lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;    &lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;get_item&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;num&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mi&quot;&gt;1&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;while&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;True&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;try&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;n&quot;&gt;item&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;=&lt;/span&gt; &lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;fb&lt;/span&gt;&lt;span class=&quot;o&quot;&gt;.&lt;/span&gt;&lt;span class=&quot;n&quot;&gt;get&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;#39;/v0/item&amp;#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;num&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;break&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;except&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;HTTPError&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;HTTPError! Retrying!&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+            &lt;span class=&quot;k&quot;&gt;except&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;ConnectionError&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;:&lt;/span&gt;
+                &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s&quot;&gt;&amp;quot;ConnectionError! Retrying!&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
+        &lt;span class=&quot;k&quot;&gt;return&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;item&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
+
+&lt;p&gt;The exception handling in the above code is pretty useful. It happens a lot of time that while requesting a story an &lt;code&gt;HTTPError&lt;/code&gt; or a &lt;code&gt;ConnectionError&lt;/code&gt; occurs. If we don&amp;#39;t handle the exception here, our script will die and we&amp;#39;ll need to restart.
+By handling the exceptions in a &lt;code&gt;while&lt;/code&gt; loop, our script never really dies. It will just keep trying until it gets through to the story and then will move forward.
+This handling turned out to be really useful in writing a robust data collector.&lt;/p&gt;
+
+&lt;p&gt;&lt;br/&gt;&lt;/p&gt;
+
+&lt;p&gt;That is the entire code and our data collector is now ready! It still takes a lot of time to gather data for just 1 year. But once we have it, we can have all sorts of fun with it!&lt;/p&gt;
+</content>
+ </entry>
+ 
+ <entry>
    <title>Implementing and Visualizing SVM in Python with CVXOPT</title>
    <link href="http://github.com/goelhardik/2016/11/28/svm-cvxopt/"/>
    <updated>2016-11-28T00:00:00-06:00</updated>
    <id>http://github.com/goelhardik/2016/11/28/svm-cvxopt</id>
    <content type="html">&lt;div class=&quot;message&quot;&gt;
-    &lt;strong&gt;We&amp;rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.&lt;/strong&gt;
+    We&amp;rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.
 &lt;/div&gt;
 
 &lt;p&gt;So this post is not about some great technical material on any of the mentioned topics. I have been trying to use &lt;a href=&quot;http://cvxopt.org/&quot;&gt;cvxopt&lt;/a&gt; to implement an SVM-type max-margin classifier for an unrelated problem on Reinforcement Learning. While doing that, I had trouble figuring out how to use the cvxopt library to correctly implement a quadratic programming solver for SVM. Since I eventually figured it out, I am just sharing that here. Let us get into it then.&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Generating the data&lt;/strong&gt;&lt;br/&gt;
-We will generate linearly separable, 2-class data using 2-dimensional Gaussians. Below is the entire Python code to generate, visualize and save the data.&lt;/p&gt;
+&lt;h3&gt;Generating the data&lt;/h3&gt;
+
+&lt;p&gt;We will generate linearly separable, 2-class data using 2-dimensional Gaussians. Below is the entire Python code to generate, visualize and save the data.&lt;/p&gt;
 
 &lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;pickle&lt;/span&gt;
 &lt;span class=&quot;kn&quot;&gt;import&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;numpy&lt;/span&gt; &lt;span class=&quot;kn&quot;&gt;as&lt;/span&gt; &lt;span class=&quot;nn&quot;&gt;np&lt;/span&gt;
@@ -77,8 +180,9 @@ We will generate linearly separable, 2-class data using 2-dimensional Gaussians.
     &lt;center&gt;&lt;img src=&quot;/images/svm-cvxopt/data.png&quot; alt=&quot;Data generated from 2 Gaussians&quot;/&gt;&lt;/center&gt;
 &lt;/table&gt;
 
-&lt;p&gt;&lt;strong&gt;Fitting an SVM&lt;/strong&gt;&lt;br/&gt;
-Now for the second part, let us look at the SVM formulation and the interface that CVXOPT provides. Below is the primal SVM objective.&lt;/p&gt;
+&lt;h3&gt;Fitting an SVM&lt;/h3&gt;
+
+&lt;p&gt;Now for the second part, let us look at the SVM formulation and the interface that CVXOPT provides. Below is the primal SVM objective.&lt;/p&gt;
 
 &lt;p&gt;$$\begin{eqnarray}
 \min_{w}\frac{1}{2}||w||^{2}  \nonumber \\\
@@ -150,8 +254,9 @@ Now for the second part, let us look at the SVM formulation and the interface th
 
 &lt;p&gt;Looks pretty neat and is good for visualizing 2-D stuff.&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;References:&lt;/strong&gt;
-&lt;ol class=&quot;bibliography&quot;&gt;&lt;/ol&gt;&lt;/p&gt;
+&lt;h3&gt;References:&lt;/h3&gt;
+
+&lt;ol class=&quot;bibliography&quot;&gt;&lt;/ol&gt;
 </content>
  </entry>
  
@@ -164,11 +269,13 @@ Now for the second part, let us look at the SVM formulation and the interface th
     &lt;strong&gt;Fisher&amp;rsquo;s Linear Discriminant Analysis (LDA)&lt;/strong&gt; is a dimension reduction technique that can be used for classification as well. In this blog post, we will learn more about Fisher&amp;rsquo;s LDA and implement it from scratch in Python.
 &lt;/div&gt;
 
-&lt;p&gt;&lt;strong&gt;What?&lt;/strong&gt;&lt;br/&gt;
-As mentioned above, Fisher&amp;rsquo;s LDA is a dimension reduction technique. Such techniques can primarily be used to reduce the dimensionality for high-dimensional data. People do this for multiple reasons - dimension reduction as feature extraction, dimension reduction for classification or for data visualizaiton.&lt;br/&gt;&lt;/p&gt;
+&lt;h3&gt;What?&lt;/h3&gt;
 
-&lt;p&gt;&lt;strong&gt;How?&lt;/strong&gt;&lt;br/&gt;
-Since this is the theory section, &lt;strong&gt;key takeaways&lt;/strong&gt; from it are as follows (in case, you do not want to spend time on it)&lt;br/&gt;
+&lt;p&gt;As mentioned above, Fisher&amp;rsquo;s LDA is a dimension reduction technique. Such techniques can primarily be used to reduce the dimensionality for high-dimensional data. People do this for multiple reasons - dimension reduction as feature extraction, dimension reduction for classification or for data visualizaiton.&lt;br/&gt;&lt;/p&gt;
+
+&lt;h3&gt;How?&lt;/h3&gt;
+
+&lt;p&gt;Since this is the theory section, &lt;strong&gt;key takeaways&lt;/strong&gt; from it are as follows (in case, you do not want to spend time on it)&lt;br/&gt;
 1. Calculate \(S_{b}\), \(S_{w}\) and \(d^{\prime}\) largest eigenvalues of \(S_{w}^{-1}S_{b}\).&lt;br/&gt;
 2. Can project to a maximum of \(K - 1\) dimensions.&lt;br/&gt;
 &lt;br/&gt;
@@ -196,9 +303,9 @@ Now using Lagrangian dual and the KKT conditions, the problem of maximizing \(J\
 &lt;p&gt;which is an eigenvalue problem for the matrix \(S_{w}^{-1}S_{b}\). Thus our final solution for \(w\) will be the eigenvectors of the above equation, corresponding to the largest eigenvalues. For reduction to \(d^{\prime}\) dimensions, we take the \(d^{\prime}\) largest eigenvalues as they will contain the most information. Also, note that if we have \(K\) classes, the maximum value of \(d^{\prime}\) can be \(K - 1\). That is, we cannot project \(K\) class data to a dimension greater than \(K - 1\). (Of course, \(d^{\prime}\) cannot be greater than the original data dimension \(d\)). This is because of the following reason. Note that the between-class scatter matrix, \(S_{b}\) was a sum of \(K\) matrices, each of which is of rank 1, being an outer product of two vectors. Also, because the overall mean and the individual class means are related, only (\(K - 1\)) of these \(K\) matrices are independent. Thus \(S_{b}\) has a maximum rank of \(K - 1\) and hence there are only \(K - 1\) non-zero eigenvalues. Thus we are unable to project the data to more than \(K - 1\) dimensions.
 &lt;br/&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Code&lt;/strong&gt;
-&lt;br/&gt;
-The main part of the code is shown below. If you are looking for the entire code with data preprocessing, train-test split etc., find it &lt;a href=&quot;https://github.com/goelhardik/projects/tree/master/fishers_lda&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+&lt;h3&gt;Code&lt;/h3&gt;
+
+&lt;p&gt;The main part of the code is shown below. If you are looking for the entire code with data preprocessing, train-test split etc., find it &lt;a href=&quot;https://github.com/goelhardik/projects/tree/master/fishers_lda&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
 
 &lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-python&quot; data-lang=&quot;python&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;fit&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;bp&quot;&gt;self&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;):&lt;/span&gt;
     &lt;span class=&quot;c&quot;&gt;# Function estimates the LDA parameters&lt;/span&gt;
@@ -416,8 +523,9 @@ I thought it would be fun to plot the likelihood gaussian curves as well. So her
 Hope this was fun and helpful for you to implement your own version of Fisher&amp;rsquo;s LDA.
 If you would like to run the code and produce the results for yourself, follow the &lt;a href=&quot;https://github.com/goelhardik/projects/tree/master/fishers_lda&quot;&gt;github&lt;/a&gt; link to find the runnable code along with the two datasets - Boston and Digits.&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;References:&lt;/strong&gt;
-&lt;ol class=&quot;bibliography&quot;&gt;&lt;li&gt;&lt;span id=&quot;bishop2006pattern&quot;&gt;Bishop, C. M. (2006). Pattern recognition. &lt;i&gt;Machine Learning&lt;/i&gt;, &lt;i&gt;128&lt;/i&gt;.&lt;/span&gt;&lt;/li&gt;&lt;/ol&gt;&lt;/p&gt;
+&lt;h3&gt;References:&lt;/h3&gt;
+
+&lt;ol class=&quot;bibliography&quot;&gt;&lt;li&gt;&lt;span id=&quot;bishop2006pattern&quot;&gt;Bishop, C. M. (2006). Pattern recognition. &lt;i&gt;Machine Learning&lt;/i&gt;, &lt;i&gt;128&lt;/i&gt;.&lt;/span&gt;&lt;/li&gt;&lt;/ol&gt;
 </content>
  </entry>
  

@@ -10,10 +10,10 @@ message: ../images/lda.png
 	<strong>Fisher&rsquo;s Linear Discriminant Analysis (LDA)</strong> is a dimension reduction technique that can be used for classification as well. In this blog post, we will learn more about Fisher&rsquo;s LDA and implement it from scratch in Python.
 </div>
 
-<strong>What?</strong><br/>
+<h3>What?</h3>
 As mentioned above, Fisher&rsquo;s LDA is a dimension reduction technique. Such techniques can primarily be used to reduce the dimensionality for high-dimensional data. People do this for multiple reasons - dimension reduction as feature extraction, dimension reduction for classification or for data visualizaiton.<br/>
 
-<strong>How?</strong><br/>
+<h3>How?</h3>
 Since this is the theory section, **key takeaways** from it are as follows (in case, you do not want to spend time on it)<br/>
 1. Calculate \\(S\_{b}\\), \\(S\_{w}\\) and \\(d^{\prime}\\) largest eigenvalues of \\(S\_{w}^{-1}S\_{b}\\).<br/>
 2. Can project to a maximum of \\(K - 1\\) dimensions.<br/>
@@ -39,8 +39,7 @@ $$S\_{w}^{-1}S\_{b}w = \lambda w$$
 which is an eigenvalue problem for the matrix \\(S\_{w}^{-1}S\_{b}\\). Thus our final solution for \\(w\\) will be the eigenvectors of the above equation, corresponding to the largest eigenvalues. For reduction to \\(d^{\prime}\\) dimensions, we take the \\(d^{\prime}\\) largest eigenvalues as they will contain the most information. Also, note that if we have \\(K\\) classes, the maximum value of \\(d^{\prime}\\) can be \\(K - 1\\). That is, we cannot project \\(K\\) class data to a dimension greater than \\(K - 1\\). (Of course, \\(d^{\prime}\\) cannot be greater than the original data dimension \\(d\\)). This is because of the following reason. Note that the between-class scatter matrix, \\(S\_{b}\\) was a sum of \\(K\\) matrices, each of which is of rank 1, being an outer product of two vectors. Also, because the overall mean and the individual class means are related, only (\\(K - 1\\)) of these \\(K\\) matrices are independent. Thus \\(S\_{b}\\) has a maximum rank of \\(K - 1\\) and hence there are only \\(K - 1\\) non-zero eigenvalues. Thus we are unable to project the data to more than \\(K - 1\\) dimensions.
 <br/>
 
-<strong>Code</strong>
-<br/>
+<h3>Code</h3>
 The main part of the code is shown below. If you are looking for the entire code with data preprocessing, train-test split etc., find it [here](https://github.com/goelhardik/projects/tree/master/fishers_lda).
 {% highlight python %}
 def fit(self):
@@ -257,5 +256,5 @@ def plot_bivariate_gaussians(self):
 Hope this was fun and helpful for you to implement your own version of Fisher&rsquo;s LDA.
 If you would like to run the code and produce the results for yourself, follow the [github](https://github.com/goelhardik/projects/tree/master/fishers_lda) link to find the runnable code along with the two datasets - Boston and Digits.
 
-<strong>References:</strong>
+<h3>References:</h3>
 {% bibliography --cited %}

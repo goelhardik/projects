@@ -7,12 +7,12 @@ message: ../images/svm-cvxopt/svm.png
 
 
 <div class="message">
-	<strong>We&rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.</strong>
+	We&rsquo;ll implement an SVM classifier on toy data using the library CVXOPT and learn to visualize the decision boundary.
 </div>
 
 So this post is not about some great technical material on any of the mentioned topics. I have been trying to use [cvxopt](http://cvxopt.org/) to implement an SVM-type max-margin classifier for an unrelated problem on Reinforcement Learning. While doing that, I had trouble figuring out how to use the cvxopt library to correctly implement a quadratic programming solver for SVM. Since I eventually figured it out, I am just sharing that here. Let us get into it then.
 
-<strong>Generating the data</strong><br/>
+<h3>Generating the data</h3>
 We will generate linearly separable, 2-class data using 2-dimensional Gaussians. Below is the entire Python code to generate, visualize and save the data.
 {% highlight python %}
 import pickle
@@ -64,7 +64,7 @@ The code has comments and should be an easy read. It will generate a pickle file
 
 {% include image.html url='images/svm-cvxopt/data.png' description='Data generated from 2 Gaussians' %}
 
-<strong>Fitting an SVM</strong><br/>
+<h3>Fitting an SVM</h3>
 Now for the second part, let us look at the SVM formulation and the interface that CVXOPT provides. Below is the primal SVM objective.
 
 $$\begin{eqnarray}
@@ -140,5 +140,5 @@ The entire code is on my [github](https://github.com/goelhardik/svm-cvxopt). Onc
 
 Looks pretty neat and is good for visualizing 2-D stuff.
 
-<strong>References:</strong>
+<h3>References:</h3>
 {% bibliography --cited %}
