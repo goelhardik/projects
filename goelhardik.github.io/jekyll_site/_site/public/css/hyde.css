@@ -87,11 +87,13 @@ html {
   margin-left: 30px;
   margin-bottom: 0;
   font-family: 'CMS', 'Droid Serif', Georgia, Times, serif;
+  float: left;
+  font-size: 140%;
 }
 
 .sidebar-name p {
   float: left;
-  margin-left: 70px;
+  margin-left: 10px;
 }
 
 .sidebar-name a {
@@ -205,7 +207,9 @@ a.sidebar-nav-item:focus {
 
 /* Red */
 .theme-base-08 .sidebar {
-  background-color: black;
+  background-color: #313030;
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 .theme-base-08 .content a,
 .theme-base-08 .related-posts li a:hover {
