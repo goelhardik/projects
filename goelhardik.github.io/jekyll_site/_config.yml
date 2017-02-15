@@ -8,9 +8,8 @@ permalink:        pretty
 # Setup
 title:            Hardik Goel
 tagline:          'Computer Scientist | Graduate Student'
-description:      'Computer Scientist & Graduate Student 
-    <h3 style="white-space: pre;">
-    <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a></h3>'
+description:      '
+    <a href="https://github.com/goelhardik" target="_blank"><i class="fa fa-github" aria-hidden="true"></i></a>    <a href="https://twitter.com/virtualbaba" target="_blank"><i class="fa fa-twitter" aria-hidden="true"></i></a>    <a href="https://www.facebook.com/hardik.goel.549" target="_blank"><i class="fa fa-facebook" aria-hidden="true"></i></a>'
 url:              http://github.com/goelhardik
 baseurl:          /
 

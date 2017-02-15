@@ -48,7 +48,7 @@ body {
 }
 
 html {
-  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-family: 'CMS', 'Droid Serif', Georgia, Times, serif;
   font-size: 16px;
   line-height: 1.5;
 }
@@ -79,9 +79,7 @@ a:focus {
 }
 
 /* Headings */
-h1, h2, h3, h4, h5, h6 {
-  margin-bottom: .5rem;
-  font-weight: bold;
+h2, h3, h4, h5, h6 {
   line-height: 1.25;
   color: #313131;
   text-rendering: optimizeLegibility;
@@ -94,7 +92,7 @@ h2 {
   font-size: 1.5rem;
 }
 h3 {
-  margin-top: 1.5rem;
+  margin-top: 0.0rem;
   font-size: 1.25rem;
 }
 h4, h5, h6 {
@@ -106,6 +104,8 @@ h4, h5, h6 {
 p {
   margin-top: 0;
   margin-bottom: 1rem;
+  font-size: 18px;
+  line-height: 1.5;
 }
 
 strong {
@@ -286,11 +286,12 @@ tbody tr:nth-child(odd) th {
  */
 
 .container {
+  /*
   max-width: 38rem;
   padding-left:  1rem;
   padding-right: 1rem;
+  */
   margin-left:  auto;
-  margin-right: auto;
 }
 
 
@@ -330,6 +331,7 @@ tbody tr:nth-child(odd) th {
 
 .posts {
   overflow: hidden;
+  margin-top: 30px;
 }
 
 .post {
@@ -362,19 +364,73 @@ tbody tr:nth-child(odd) th {
   text-align: center;
 }
 
-.page,
-.post-full {
+.page {
+  width: 100%;
   margin-bottom: 4em;
 }
+
+.post-full {
+  margin-top: 40px;
+  margin-bottom: 4em;
+  margin-left: 20px;
+  margin-right: 20px;
+  text-align: justify;
+  text-justify: inter-word;
+}
+
+.project {
+  margin-top: 15px;
+}
+
+.project-title {
+  overflow: hidden; /* clearfix */
+  margin-bottom: 0;
+}
+
+.project h4, p {
+  margin-top: 0;
+  margin-bottom: 0;
+  text-align: justify;
+  text-justify: inter-word;
+}
+.project .info {
+  overflow: hidden; /* clearfix */
+  color: rgb(109,109,109);
+  font-family: 'CMS', 'Droid Serif', Georgia, Times, serif;
+  font-style: italic;
+}
+
 /* Blog post or page title */
-.page-title,
+.page-title {
+  background-color: black;
+  margin-top: 0;
+  font-weight: normal;
+  position: relative;
+  min-height: 50px;
+  margin-bottom: 20px;
+  border: 1px solid transparent;
+}
+
+.page-title h1 {
+  font-weight: normal;
+  padding-left: 10px;
+  margin-left: 10px;
+  font-color: #8a7a7a;
+}
+
+.page-content {
+  margin-left: 20px;
+  margin-right: 20px;
+  text-align: justify;
+  text-justify: inter-word;
+}
 .post-title,
 .post-title a {
   color: #303030;
 }
-.page-title,
 .post-title {
   margin-top: 0;
+  font-weight: normal;
 }
 
 /* Meta data line below post title */
@@ -390,6 +446,8 @@ tbody tr:nth-child(odd) th {
   padding-top: 2rem;
   padding-bottom: 2rem;
   border-top: 1px solid #eee;
+  margin-left: 20px;
+  margin-right: 20px;
 }
 .related-posts {
   padding-left: 0;
@@ -422,7 +480,7 @@ tbody tr:nth-child(odd) th {
   overflow: hidden; /* clearfix */
   margin-left: -1rem;
   margin-right: -1rem;
-  font-family: "PT Sans", Helvetica, Arial, sans-serif;
+  font-family: 'CMS', 'Droid Serif', Georgia, Times, serif;
   color: #ccc;
   text-align: center;
 }

@@ -1,17 +1,18 @@
 <div class="sidebar">
   <div class="container sidebar-sticky">
-    <div class="sidebar-about">
+     <div class="sidebar-name">
       <h1>
+	      <!--
 		<img src="{{ site.baseurl }}images/mugshot.png" height=150px width=auto style="margin-left: 50px; border-radius: 50%; border: 2px solid white; 
 		    -ms-transform: rotate(1deg); /* IE 9 */
 			    -webkit-transform: rotate(1deg); /* Chrome, Safari, Opera */
 				    transform: rotate(1deg);" />
+	      -->
         <a href="{{ site.baseurl }}">
           {{ site.title }}
         </a>
       </h1>
       <p class="lead">{{ site.description }}</p>
-    </div>
 
     <nav class="sidebar-nav">
       <a class="sidebar-nav-item{% if page.url == site.baseurl %} active{% endif %}" href="{{ site.baseurl }}">Home</a>
@@ -30,8 +31,11 @@
         {% endif %}
       {% endfor %}
 
+     </div>
     </nav>
 
+
+     
 	<!--<p>&copy; {{ site.time | date: '%Y' }}. All rights reserved.</p>-->
   </div>
 </div>
